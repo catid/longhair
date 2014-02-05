@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include <fstream>
 using namespace std;
 
 #include "AbyssinianPRNG.hpp"
@@ -23,6 +24,8 @@ static void print(const void *data, int bytes) {
 }
 */
 
+//#define CAT_ENCODE_TIMES_ONLY
+
 int main() {
 	m_clock.OnInitialize();
 
@@ -39,13 +42,22 @@ int main() {
 	Abyssinian prng;
 	prng.Initialize(m_clock.msec(), Clock::cycles());
 
+	u8 heat_map[256 * 256] = { 0 };
+
 	for (int block_count = 2; block_count < 255; ++block_count) {
 		for (int recovery_block_count = 2; recovery_block_count < (256 - block_count); ++recovery_block_count) {
 			u8 *data = new u8[block_bytes * block_count];
 			u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
 			Block *blocks = new Block[block_count];
 
-			for (int erasures_count = 1; erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+			double sum_encode = 0;
+
+			int erasures_count;
+#ifdef CAT_ENCODE_TIMES_ONLY
+			for (erasures_count = 1; erasures_count <= 4 && erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+#else
+			for (erasures_count = 1; erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+#endif
 				for (int ii = 0; ii < block_bytes * block_count; ++ii) {
 					data[ii] = (u8)prng.Next();
 				}
@@ -56,9 +68,11 @@ int main() {
 
 				double t1 = m_clock.usec();
 				double encode_time = t1 - t0;
+				sum_encode += encode_time;
 
 				cout << "Encoded k=" << block_count << " data blocks with m=" << recovery_block_count << " recovery blocks in " << encode_time << " usec : " << (block_bytes * block_count / encode_time) << " MB/s" << endl;
 
+#ifndef CAT_ENCODE_TIMES_ONLY
 				for (int ii = 0; ii < erasures_count; ++ii) {
 					int erasure_index = recovery_block_count - ii - 1;
 					blocks[ii].data = recovery_blocks + erasure_index * block_bytes;
@@ -83,12 +97,51 @@ int main() {
 					const u8 *orig = data + ii * block_bytes;
 					assert(!memcmp(blocks[ii].data, orig, block_bytes));
 				}
+#endif // CAT_ENCODE_TIMES_ONLY
 			}
+
+			double avg_encode = sum_encode / erasures_count;
+			int speed = block_bytes * block_count / avg_encode;
+
+			u8 map_value = 0;
+
+			if (speed < 10) {
+				map_value = 1;
+			} else if (speed < 50) {
+				map_value = 2;
+			} else if (speed < 100) {
+				map_value = 3;
+			} else if (speed < 200) {
+				map_value = 4;
+			} else if (speed < 300) {
+				map_value = 5;
+			} else if (speed < 400) {
+				map_value = 6;
+			} else if (speed < 500) {
+				map_value = 7;
+			} else {
+				map_value = 8;
+			}
+
+			heat_map[block_count * 256 + recovery_block_count] = map_value;
 
 			delete []data;
 			delete []recovery_blocks;
 			delete []blocks;
 		}
+	}
+
+	ofstream file;
+	file.open("heapmap.txt");
+
+	for (int ii = 0; ii < 256; ++ii) {
+		file << ii << ", ";
+		for (int jj = 0; jj < 256; ++jj) {
+			u8 map_value = heat_map[ii * 256 + jj];
+
+			file << (int)map_value << ",";
+		}
+		file << endl;
 	}
 
 	m_clock.OnFinalize();
