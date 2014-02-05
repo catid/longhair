@@ -50,7 +50,7 @@ extern int _cauchy_256_init(int expected_version);
 
 // Descriptor for received data block
 typedef struct _Block {
-	char *data;
+	unsigned char *data;
 	unsigned char row;
 } Block;
 
@@ -61,7 +61,7 @@ typedef struct _Block {
  * Returns a valid state object on success.
  * Returns 0 on failure.
  */
-extern int cauchy_256_encode(int k, int m, const u8 *data, u8 *recovery_blocks, int block_bytes);
+extern int cauchy_256_encode(int k, int m, const void *data, void *recovery_blocks, int block_bytes);
 
 /*
  * Cauchy decode

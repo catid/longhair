@@ -176,7 +176,7 @@ static void GFC256Init() {
 	}
 
 	// Allocate table memory 65KB x 2
-	GFC256_MUL_TABLE = (u8 *)malloc(256 * 256 * 2);
+	GFC256_MUL_TABLE = new u8[256 * 256 * 2];
 	GFC256_DIV_TABLE = GFC256_MUL_TABLE + 256 * 256;
 
 	u8 *m = GFC256_MUL_TABLE, *d = GFC256_DIV_TABLE;
@@ -220,10 +220,6 @@ static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y) {
 // Memory-access optimized for constant divisors in y.
 static CAT_INLINE u8 GFC256Divide(u8 x, u8 y) {
 	return GFC256_DIV_TABLE[((u32)y << 8) + x];
-}
-
-void cauchy_init() {
-	GFC256Init();
 }
 
 #include "cauchy_tables_256.inc"
@@ -580,7 +576,17 @@ static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, in
 
 //// API
 
-extern "C" int cauchy_decode(int k, int m, Block *blocks, int block_bytes) {
+extern "C" int _cauchy_256_init(int expected_version) {
+	if (expected_version != CAUCHY_256_VERSION) {
+		return -1;
+	}
+
+	GFC256Init();
+
+	return 0;
+}
+
+extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// For the special case of one erasure,
 	if (m == 1) {
 		cauchy_decode_m1(k, blocks, block_bytes);
@@ -619,7 +625,7 @@ extern "C" int cauchy_decode(int k, int m, Block *blocks, int block_bytes) {
 	// A combination of precomputation and heuristics provides a
 	// near-optimal matrix selection for each value of k, m.
 
-	cauchy_init();
+	GFC256Init();
 
 	// Generate Cauchy matrix
 	int stride;
@@ -684,7 +690,10 @@ extern "C" int cauchy_decode(int k, int m, Block *blocks, int block_bytes) {
 	return 0;
 }
 
-extern "C" int cauchy_encode(int k, int m, const u8 *data, u8 *recovery_blocks, int block_bytes) {
+extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecovery_blocks, int block_bytes) {
+	const u8 *data = reinterpret_cast<const u8 *>( vdata );
+	u8 *recovery_blocks = reinterpret_cast<u8 *>( vrecovery_blocks );
+
 	// If only one input block,
 	if (k <= 1) {
 		// Copy it directly to output
@@ -710,7 +719,7 @@ extern "C" int cauchy_encode(int k, int m, const u8 *data, u8 *recovery_blocks, 
 		return -1;
 	}
 
-	cauchy_init();
+	GFC256Init();
 
 	// Generate Cauchy matrix
 	int stride;
