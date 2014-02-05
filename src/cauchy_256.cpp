@@ -74,14 +74,50 @@
  * using w = 7, but a generic implementation that uses w = 7 will not run faster than a
  * specialized implementation that uses w = 8.
  *
- * Jerasure also misses a number of opportunities for optimization in the solver that are
- * incorporated to speed up this codec: Windowed back and forward substitution for the
- * Gaussian elimination solver, and solution shortcuts to avoid full diagonalization.
+ * Jerasure also misses a number of opportunities for optimization in the solver.
  *
  * [1] "Optimizing Cauchy Reed-Solomon Codes for Fault-Tolerant Storage Applications" (2005)
  *	http://web.eecs.utk.edu/~plank/plank/papers/CS-05-569.pdf
  * [2] "Jerasure 2.0 A Library in C/C++ Facilitating Erasure Coding for Storage Applications" (2014)
  * 	http://jerasure2.googlecode.com/svn/trunk/jerasure3/documentation/paper.pdf
+ */
+
+/*
+ * Improvement on Jerasure's 8x8 submatrix generation:
+ *
+ * Instead of bit-slicing across all 8 rows, I byte-slice instead.
+ * Specifically, in Jerasure it is done like the following.
+ *
+ * For example, if a GF(16) element is "9", then in Jerasure it would
+ * be split up between bitmatrix rows like this:
+ *
+ *	1...
+ *	0...
+ *	0...
+ *	1...
+ *
+ * where each column is the previous column times 2.
+ *
+ * This requires bit operations to separate out each of the bits into
+ * each of the rows.
+ *
+ * However, the transpose of these submatrices is also invertible.
+ *
+ * A hand-wavy proof is that you can swap the X[] and Y[] values that
+ * generate the Cauchy matrix and it is still invertible, so taking
+ * the transpose of each element should be okay.  To be honest at
+ * first I just guessed it might work, and it turned out I was right.
+ *
+ * So the code slices up the GF(256) elements like this:
+ *
+ * 1001
+ * ....
+ * ....
+ * ....
+ *
+ * where each *row* is the previous row times 2.
+ *
+ * This completely eliminates the bit twiddling and works just as well.
  */
 
 // Debugging
