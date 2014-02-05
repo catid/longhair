@@ -23,6 +23,54 @@ which should be quite a bit faster.  In practice I will only be using it for
 k < 32, and switching to Wirehair for k >= 32.
 
 
+## Benchmarks
+
+For small k this thing is ridiculously fast on my laptop:
+
+~~~
+Using 1296 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
+Encoded k=9 data blocks with m=2 recovery blocks in 11 usec : 1060.36 MB/s
++ Decoded 1 erasures in 5 usec : 2332.8 MB/s
+Encoded k=9 data blocks with m=2 recovery blocks in 4 usec : 2916 MB/s
++ Decoded 2 erasures in 8 usec : 1458 MB/s
+Encoded k=9 data blocks with m=3 recovery blocks in 12 usec : 972 MB/s
++ Decoded 1 erasures in 2 usec : 5832 MB/s
+Encoded k=9 data blocks with m=3 recovery blocks in 9 usec : 1296 MB/s
++ Decoded 2 erasures in 8 usec : 1458 MB/s
+Encoded k=9 data blocks with m=3 recovery blocks in 8 usec : 1458 MB/s
++ Decoded 3 erasures in 14 usec : 833.143 MB/s
+Encoded k=9 data blocks with m=4 recovery blocks in 28 usec : 416.571 MB/s
++ Decoded 1 erasures in 2 usec : 5832 MB/s
+Encoded k=9 data blocks with m=4 recovery blocks in 12 usec : 972 MB/s
++ Decoded 2 erasures in 8 usec : 1458 MB/s
+Encoded k=9 data blocks with m=4 recovery blocks in 12 usec : 972 MB/s
++ Decoded 3 erasures in 15 usec : 777.6 MB/s
+Encoded k=9 data blocks with m=4 recovery blocks in 11 usec : 1060.36 MB/s
++ Decoded 4 erasures in 21 usec : 555.429 MB/s
+Encoded k=9 data blocks with m=5 recovery blocks in 19 usec : 613.895 MB/s
++ Decoded 1 erasures in 1 usec : 11664 MB/s
+Encoded k=9 data blocks with m=5 recovery blocks in 17 usec : 686.118 MB/s
++ Decoded 2 erasures in 8 usec : 1458 MB/s
+Encoded k=9 data blocks with m=5 recovery blocks in 17 usec : 686.118 MB/s
++ Decoded 3 erasures in 15 usec : 777.6 MB/s
+Encoded k=9 data blocks with m=5 recovery blocks in 16 usec : 729 MB/s
++ Decoded 4 erasures in 23 usec : 507.13 MB/s
+Encoded k=9 data blocks with m=5 recovery blocks in 16 usec : 729 MB/s
++ Decoded 5 erasures in 32 usec : 364.5 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 28 usec : 416.571 MB/s
++ Decoded 1 erasures in 1 usec : 11664 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 22 usec : 530.182 MB/s
++ Decoded 2 erasures in 8 usec : 1458 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 21 usec : 555.429 MB/s
++ Decoded 3 erasures in 15 usec : 777.6 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 22 usec : 530.182 MB/s
++ Decoded 4 erasures in 22 usec : 530.182 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 21 usec : 555.429 MB/s
++ Decoded 5 erasures in 32 usec : 364.5 MB/s
+Encoded k=9 data blocks with m=6 recovery blocks in 21 usec : 555.429 MB/s
++ Decoded 6 erasures in 43 usec : 271.256 MB/s
+~~~
+
 
 #### Credits
 
