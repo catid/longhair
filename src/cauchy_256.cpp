@@ -63,6 +63,17 @@
 using namespace std;
 #define DLOG(x) x
 
+#else
+#define DLOG(x)
+#endif
+
+#include "BitMath.hpp"
+#include "MemXOR.hpp"
+#include "MemSwap.hpp"
+using namespace cat;
+
+#ifdef CAT_CAUCHY_LOG
+
 static void print_words(const u64 *row, int words) {
 	for (int ii = 0; ii < words; ++ii) {
 		for (int jj = 0; jj < 64; ++jj) {
@@ -84,14 +95,7 @@ static void print_matrix(const u64 *matrix, int word_stride, int rows) {
 	}
 }
 
-#else
-#define DLOG(x)
-#endif
-
-#include "BitMath.hpp"
-#include "MemXOR.hpp"
-#include "MemSwap.hpp"
-using namespace cat;
+#endif // CAT_CAUCHY_LOG
 
 // GF(256) math tables:
 // Generated with optimal polynomial 0x187 = 110000111
@@ -700,7 +704,7 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecover
 		memcpy(recovery_blocks, data, block_bytes);
 	} else {
 		// XOR all input blocks together
-		memxor_add(recovery_blocks, data, data + block_bytes, block_bytes);
+		memxor_set(recovery_blocks, data, data + block_bytes, block_bytes);
 		const u8 *in = data + block_bytes;
 		for (int x = 2; x < k; ++x) {
 			in += block_bytes;

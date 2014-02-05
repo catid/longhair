@@ -1,6 +1,7 @@
 #include "cauchy_256.h"
 
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 using namespace std;
 
@@ -9,6 +10,18 @@ using namespace std;
 using namespace cat;
 
 static Clock m_clock;
+
+/*
+static void print(const void *data, int bytes) {
+	const u8 *in = reinterpret_cast<const u8 *>( data );
+
+	cout << hex;
+	for (int ii = 0; ii < bytes; ++ii) {
+		cout << (int)in[ii] << " ";
+	}
+	cout << dec << endl;
+}
+*/
 
 int main() {
 	m_clock.OnInitialize();
@@ -26,25 +39,25 @@ int main() {
 	Abyssinian prng;
 	prng.Initialize(m_clock.msec(), Clock::cycles());
 
-	for (int block_count = 2; block_count < 255; ++block_count) {
+	for (int block_count = 9; block_count < 255; ++block_count) {
 		for (int recovery_block_count = 2; recovery_block_count < (256 - block_count); ++recovery_block_count) {
 			u8 *data = new u8[block_bytes * block_count];
 			u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
 			Block *blocks = new Block[block_count];
 
-			double t0 = m_clock.usec();
-
-			assert(!cauchy_256_encode(block_count, recovery_block_count, data, recovery_blocks, block_bytes));
-
-			double t1 = m_clock.usec();
-			double encode_time = t1 - t0;
-
-			cout << "Encoded k=" << block_count << " data blocks with m=" << recovery_block_count << " recovery blocks in " << encode_time << " usec : " << (block_bytes * block_count / encode_time) << " MB/s" << endl;
-
-			for (int erasures_count = 1; erasures_count <= recovery_block_count; ++erasures_count) {
+			for (int erasures_count = 1; erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
 				for (int ii = 0; ii < block_bytes * block_count; ++ii) {
 					data[ii] = (u8)prng.Next();
 				}
+
+				double t0 = m_clock.usec();
+
+				assert(!cauchy_256_encode(block_count, recovery_block_count, data, recovery_blocks, block_bytes));
+
+				double t1 = m_clock.usec();
+				double encode_time = t1 - t0;
+
+				cout << "Encoded k=" << block_count << " data blocks with m=" << recovery_block_count << " recovery blocks in " << encode_time << " usec : " << (block_bytes * block_count / encode_time) << " MB/s" << endl;
 
 				for (int ii = 0; ii < erasures_count; ++ii) {
 					blocks[ii].data = recovery_blocks + ii * block_bytes;
@@ -70,8 +83,6 @@ int main() {
 					assert(!memcmp(blocks[ii].data, orig, block_bytes));
 				}
 			}
-
-			cout << "Cauchy decode in " << (t1 - t0) << " usec" << endl;
 
 			delete []data;
 			delete []recovery_blocks;

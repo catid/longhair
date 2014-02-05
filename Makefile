@@ -29,7 +29,7 @@ release : library
 
 # Debug target
 
-debug : CFLAGS += $(DBGFLAGS)
+debug : CFLAGS += $(DBGFLAGS) -DCAT_CAUCHY_LOG
 debug : LIBNAME = $(DBGLIBNAME)
 debug : library
 
@@ -41,6 +41,11 @@ library : clean $(library_o)
 
 
 # test executable
+
+valgrind : CFLAGS += -DUNIT_TEST $(DBGFLAGS)
+valgrind : debug $(test_o)
+	$(CCPP) $(test_o) -L./bin -llonghair_debug -o test
+	valgrind --dsymutil=yes ./test
 
 test : CFLAGS += -DUNIT_TEST $(OPTFLAGS)
 test : release $(test_o)
