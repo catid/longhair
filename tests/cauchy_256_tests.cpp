@@ -60,8 +60,9 @@ int main() {
 				cout << "Encoded k=" << block_count << " data blocks with m=" << recovery_block_count << " recovery blocks in " << encode_time << " usec : " << (block_bytes * block_count / encode_time) << " MB/s" << endl;
 
 				for (int ii = 0; ii < erasures_count; ++ii) {
-					blocks[ii].data = recovery_blocks + ii * block_bytes;
-					blocks[ii].row = block_count + ii;
+					int erasure_index = recovery_block_count - ii - 1;
+					blocks[ii].data = recovery_blocks + erasure_index * block_bytes;
+					blocks[ii].row = block_count + erasure_index;
 				}
 
 				for (int ii = erasures_count; ii < block_count; ++ii) {
