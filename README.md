@@ -72,6 +72,28 @@ Encoded k=9 data blocks with m=6 recovery blocks in 21 usec : 555.429 MB/s
 ~~~
 
 
+## Encoder speed discussion
+
+I found that the encoder speed is directly related to the number of error
+correction blocks and doesn't depend on the amount of data to protect:
+
+![alt text](https://github.com/catid/longhair/raw/master/docs/EncoderSpeed.png "Speed of Encoder for k, m")
+
+The rows are values of k (amount of data) and the columns are values of m (number of recovery blocks added).
+
+Darker is better.  The main point of this plot is to just show that k doesn't
+factor into the performance of the code.
+
+This means that if the number of recovery blocks to generate is small, then it
+may be worthwhile using the GF(256) version of the codec even for larger amounts
+of data.  The break-even point for performance is around m < 14 symbols, where
+the simpler CRS codes start performing better than Wirehair for encoding.
+
+I think if windowing is applied to the encoder, I can push this farther, so
+before working on the GF(64) code I'm going to add some optimizations to the
+GF(256) case.  And the GF(256) version will be included in the final codec.
+
+
 #### Credits
 
 This software was written entirely by myself ( Christopher A. Taylor <mrcatid@gmail.com> ).  If you
