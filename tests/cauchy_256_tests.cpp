@@ -1,14 +1,43 @@
-#include "cauchy.h"
+#include "cauchy_256.h"
 
 #include <iostream>
 #include <cassert>
 using namespace std;
 
-void print(const u8 *data, int bytes) {
+#include "AbyssinianPRNG.hpp"
+#include "Clock.hpp"
+using namespace cat;
+
+static void print(const u8 *data, int bytes) {
+	int sep = bytes / 8;
 	for (int ii = 0; ii < bytes; ++ii) {
+		if (ii % sep == 0) {
+			cout << ": ";
+		}
 		cout << (int)data[ii] << " ";
 	}
 	cout << endl;
+}
+
+static void print_words(const u64 *row, int words) {
+	for (int ii = 0; ii < words; ++ii) {
+		for (int jj = 0; jj < 64; ++jj) {
+			if (row[ii] & ((u64)1 << jj)) {
+				cout << "1";
+			} else {
+				cout << "0";
+			}
+		}
+	}
+	cout << endl;
+}
+
+static void print_matrix(const u64 *matrix, int word_stride, int rows) {
+	cout << "Printing matrix with " << word_stride << " words per row, and " << rows << " rows:" << endl;
+	for (int ii = 0; ii < rows; ++ii) {
+		print_words(matrix, word_stride);
+		matrix += word_stride;
+	}
 }
 
 int main() {
