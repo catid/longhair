@@ -489,9 +489,10 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 				for (int ii = 0; ii < 8; ++ii, out += bitstride) {
 					out[0] = w[ii];
 				}
+				++bitrow;
 			}
 
-			bitrow += bitstride * 8;
+			bitrow += bitstride * 7;
 		}
 
 		// Set the row to what the final recovered row will be
