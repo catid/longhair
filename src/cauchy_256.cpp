@@ -120,6 +120,38 @@
  * This completely eliminates the bit twiddling and works just as well.
  */
 
+/*
+ * Tremendous improvement of 3x performance on Jerasure's encoder:
+ *
+ * The encoder has a very difficult task of generating all of the recovery
+ * symbols.  The decoder often does not need any of them, so the performance
+ * of the codec can be judged by how fast the encoder runs.  In practical
+ * applications, if the encoder is too slow, then it will not be used.
+ *
+ * To speed up the encoder specifically, I recognized that the performance
+ * of the encoder varies with m but not with k.  To run faster with larger m,
+ * I re-used a windowed approach for bitmatrix multiplication from Wirehair:
+ *
+ * For example since each element of the GF(256) matrix represents an 8x8
+ * submatrix in the bitmatrix, and each column bit represents an offset into
+ * the input data, there are many rows that repeat the same bit patterns.
+ * Since this is an MDS code, the number of repeats for 4 bits should be
+ * roughly 8 * m / 16 = m / 2.  So as m increases, it makes increasing sense
+ * to precalculate combinations of the input data and work on sets of bits.
+ *
+ * This 4-bit window technique starts being useful in practice at m = 5, and
+ * improves the encoder speed by up to 300%.
+ *
+ * Jerasure does attempt to do some row-reuse, but it tries to reuse the
+ * *entire* bitmatrix row in its "smart schedule" mode.  This has very limited
+ * performance impact and actually hurts performance in most of my test cases.
+ *
+ * I also avoid generating the bitmatrix and an encoding "schedule" at all in
+ * the encoder and just work out of registers where possible for speed.
+ *
+ * Windowed bitmatrix multiplication is implemented in win_encode().
+ */
+
 // Debugging
 #ifdef CAT_CAUCHY_LOG
 #include <iostream>
