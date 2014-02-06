@@ -94,8 +94,8 @@ To recover the original data, use the `cauchy_256_decode` function:
 
 The example above is just one way to use the `cauchy_256_decode` function.
 
-This API was designed to be flexible enough for UDP packet protocols where the
-data arrives out of order.  For packet erasure correction the following code
+This API was designed to be flexible enough for UDP/IP-based file transfer where
+the blocks arrive out of order.  For packet erasure correction the following code
 is more applicable:
 
 ~~~
@@ -179,11 +179,11 @@ This library implements Cauchy Reed-Solomon (CRS) codes as introduced by
 a number of new ways that have probably never been done before.  For full details on
 what has been improved, refer to the source code comments.
 
-There is another alternative way to do erasure codes efficiently called rateless codes,
-where there is no need to specify a value for `m` and you can generate as many redundant
-blocks as needed.  This saves a bit of overhead in actual UDP protocols.  Rateless codes
-tend to be more efficient for high-speed protocols like file transfer.  The best software
-for rateless codes at this time is likely [Wirehair](https://github.com/catid/wirehair).
+There is another alternative way to do erasure codes efficiently called rateless
+codes, where there is no need to specify a value for `m` and you can generate as
+many redundant blocks as needed.  Rateless codes tend to be more efficient for
+high-speed file transfer.  For more information on these types of erasure codes
+see the [Wirehair](https://github.com/catid/wirehair) library.
 
 
 ## Benchmarks
