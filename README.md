@@ -1,5 +1,5 @@
 # Longhair
-## Fast Cauchy Reed-Solomon Packet Error Correction Codes
+## Fast Cauchy Reed-Solomon Erasure Codes in C
 
 For most small packetized data under 32 packets, the most efficient error correction
 method is provided by the Cauchy Reed-Solomon (CRS) approach.  If the data is split
