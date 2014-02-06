@@ -56,15 +56,47 @@ To generate redundancy, use the `cauchy_256_encode` function:
 	// For each recovery block,
 	for (int ii = 0; ii < m; ++ii) {
 		char *block = recovery_blocks + ii * bytes;
-		unsigned char block_id = k + ii; // Transmit this with block (just one byte)
+		unsigned char row = k + ii; // Transmit this with block (just one byte)
 
-		// Transmit or store block bytes and block_id
+		// Transmit or store block bytes and row
 	}
 
 	delete []recovery_blocks;
 ~~~
 
 To recover the original data, use the `cauchy_256_decode` function:
+
+~~~
+	// Use the same settings as the encoder
+	int k = 33;
+	int m = 12;
+	int bytes = 1000;
+
+	// Allocate block info array
+	// There should be exactly k blocks
+	Block *block_info = new Block[k];
+
+	// Fill block_info here with data and rows from the encoder
+	// Rows under k are original data, and the rest are redundant data
+
+	// Attempt decoding
+	if (cauchy_256_decode(k, m, block_info, bytes)) {
+		// Decoding should never fail - indicates input is invalid
+		assert(k + m <= 256);
+		assert(block_info != 0);
+		assert(bytes % 8 == 0);
+		return false;
+	}
+
+	// Now the block_info elements that used to have redundant data are
+	// corrected in-place and now contain the original data.
+~~~
+
+The example above is just one way to use the `cauchy_256_decode` function.
+
+This API was designed to be flexible enough for UDP packet protocols where the
+data arrives out of order.  For packet erasure correction the following code
+is more applicable:
 
 ~~~
 	// Use the same settings as the encoder
@@ -81,19 +113,19 @@ To recover the original data, use the `cauchy_256_decode` function:
 	int original_count = 0, recovery_count = 0;
 
 	// This function will be called by onData() with original data after recovery
-	static void processData(int block_id, char *data, int data_bytes) {
+	static void processData(int row, char *data, int data_bytes) {
 		// Handle original data here only
 	}
 
 	// Call this function with each block received, either original or recovery
 	// Returns true on complete
-	bool onData(unsigned char block_id, char *new_data) {
+	bool onData(unsigned char row, char *new_data) {
 		int insertion_point;
 
 		// If it is original data,
-		if (block_id < k) {
+		if (row < k) {
 			// Process the original data immediately - Do not wait for it all to arrive!
-			processData(block_id, new_data, bytes);
+			processData(row, new_data, bytes);
 
 			// Copy to the end of the original block data
 			insertion_point = original_count++;
@@ -112,7 +144,7 @@ To recover the original data, use the `cauchy_256_decode` function:
 		// Fill in the block array entry
 		Block *block = block_info + insertion_point;
 		block->data = dest;
-		block->row = block_id;
+		block->row = row;
 
 		// If recovery is not possible yet,
 		if (original_count + recovery_count < k) {
@@ -131,22 +163,13 @@ To recover the original data, use the `cauchy_256_decode` function:
 		// For each recovered block,
 		block = block_info + k - recovery_count;
 		for (int ii = 0; ii < recovery_count; ++ii, ++block) {
-			int block_id = block->row;
-
 			// Process the recovered data
-			processData(block_id, block->data, bytes);
+			processData(row, block->data, bytes);
 		}
 
 		return true;
 	}
 ~~~
-
-The example here is just one example of how to use the `cauchy_256_decode`
-function.  This API was designed to be flexible enough for UDP packet protocols
-where the data arrives out of order.
-
-For usage cases where all the pieces are already available as in cloud storage or
-file archiving, this same approach can be taken.
 
 
 ## Comparisons with Alternatives
