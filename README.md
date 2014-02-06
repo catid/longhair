@@ -200,14 +200,14 @@ Encoded k=29 data blocks with m=14 recovery blocks in 210 usec : 178.971 MB/s
 + Decoded 14 erasures in 430 usec : 87.4047 MB/s
 ~~~
 
-Rateless codes run at about 210 MB/s for `k = 29`, so for values of `m` up to 13
-these CRS codes are a better option.
-
 Note that the codec is specialized for the `m = 1` case and runs very quickly.
+Due to a happy coincidence the first recovery block is always just an XOR of
+all the original data, so you can use this codec instead of doing that manually.
 
-The speed of the encoder falls off quickly with the size of `m`.
-I would recommend switching to a rateless code if `k` gets larger than 200 or
-`m` gets larger than about 14.
+For erasure codes the important statistic to watch is the encoder speed, because
+it determines whether or not the transmitter can afford to send the extra data.
+Usually the decoder is not going to be using every redundant data block, so
+the benchmark is actually worst-case figures for the decoder.
 
 
 ## Encoder speed discussion
@@ -222,11 +222,8 @@ The rows are values of k (amount of data) and the columns are values of m (numbe
 Darker is better.  The main point of this plot is to just show that k doesn't
 factor into the performance of the code.
 
-This means that if the number of recovery blocks to generate is small, then it
-may be worthwhile using the GF(256) version of the codec even for larger amounts
-of data.  The break-even point for performance is around m = 14 blocks.  Below
-14 redundant blocks, the simpler CRS codes are a better option.  Above 14 redundant
-blocks, the faster and more flexible rateless codes are a better option.
+Rateless codes run at about 210 MB/s for `k = 29`, so for values of `m` up to 13
+these CRS codes are a better option.
 
 
 #### Credits
