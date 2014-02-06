@@ -454,15 +454,110 @@ static void sort_blocks(int k, Block *blocks,
 	}
 }
 
+// Windowed version of eliminate_original
+static void win_original(Block *original[256], int original_count,
+						 Block *recovery[256], int recovery_count,
+						 const u8 *matrix, int stride, int subbytes) {
+	static const int PRECOMP_TABLE_SIZE = 11;
+
+	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+	u8 *table_stack[16 * 2] = {0};
+	u8 **tables[2] = {
+		table_stack, table_stack + 16
+	};
+
+	// Fill in tables
+	u8 *precomp_ptr = precomp;
+	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
+		u8 **table = tables[ii];
+
+		table[3] = precomp_ptr;
+		table[5] = precomp_ptr + subbytes;
+		table[6] = precomp_ptr + subbytes * 2;
+		table[7] = precomp_ptr + subbytes * 3;
+		for (int jj = 9; jj < 16; ++jj) {
+			table[jj] = precomp_ptr + subbytes * (jj - 5);
+		}
+	}
+
+	// For each column to generate,
+	for (int jj = 0; jj < original_count; ++jj) {
+		Block *original_block = original[jj];
+		int original_row = original_block->row;
+
+		const u8 *column = matrix + original_row;
+		const u8 *data = original_block->data;
+
+		// Fill in tables
+		for (int ii = 0; ii < 2; ++ii, data += subbytes * 4) {
+			u8 **table = tables[ii];
+
+			table[1] = (u8 *)data;
+			table[2] = (u8 *)data + subbytes;
+			table[4] = (u8 *)data + subbytes * 2;
+			table[8] = (u8 *)data + subbytes * 3;
+
+			memxor_set(table[3], table[1], table[2], subbytes);
+			memxor_set(table[6], table[2], table[4], subbytes);
+			memxor_set(table[5], table[1], table[4], subbytes);
+			memxor_set(table[7], table[1], table[6], subbytes);
+			memxor_set(table[9], table[1], table[8], subbytes);
+			memxor_set(table[12], table[4], table[8], subbytes);
+			memxor_set(table[10], table[2], table[8], subbytes);
+			memxor_set(table[11], table[3], table[8], subbytes);
+			memxor_set(table[13], table[1], table[12], subbytes);
+			memxor_set(table[14], table[2], table[12], subbytes);
+			memxor_set(table[15], table[3], table[12], subbytes);
+		}
+
+		const int row_offset = original_count + recovery_count + 1;
+
+		// For each of the rows,
+		for (int ii = 0; ii < recovery_count; ++ii) {
+			Block *recovery_block = recovery[ii];
+			int matrix_row = recovery_block->row - row_offset;
+
+			const u8 *row = column + stride * matrix_row;
+			u8 *dest = recovery_block->data;
+
+			// If this matrix element is an 8x8 identity matrix,
+			if (matrix_row < 0 || row[0] == 1) {
+				// XOR whole block at once
+				memxor(recovery_block->data, original_block->data, subbytes * 8);
+			} else {
+				u8 slice = row[0];
+
+				// Generate 8x8 submatrix and XOR in bits as needed
+				for (int bit_y = 0;; ++bit_y) {
+					int low = slice & 15;
+					int high = slice >> 4;
+
+					// Add
+					if (low && high) {
+						memxor_add(dest, tables[0][low], tables[1][high], subbytes);
+					} else if (low) {
+						memxor(dest, tables[0][low], subbytes);
+					} else {
+						memxor(dest, tables[1][high], subbytes);
+					}
+					dest += subbytes;
+
+					if (bit_y >= 7) {
+						break;
+					}
+
+					slice = GFC256Multiply(slice, 2);
+				}
+			}
+		}
+	}
+
+	delete []precomp;
+}
+
 static void eliminate_original(Block *original[256], int original_count,
 							   Block *recovery[256], int recovery_count,
 							   const u8 *matrix, int stride, int subbytes) {
-	// If no original blocks,
-	if (original_count <= 0) {
-		// Nothing to do here
-		return;
-	}
-
 	DLOG(cout << "Eliminating original:" << endl;)
 
 	int row_offset = original_count + recovery_count + 1;
@@ -744,9 +839,17 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// with Gaussian elimination, that bitmatrix can be smaller since
 	// it does not need to include these rows and columns.
 
-	// Eliminate original data from recovery rows
 	const int subbytes = block_bytes / 8;
-	eliminate_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes);
+
+	// If original data exists,
+	if (original_count > 0) {
+		// Eliminate original data from recovery rows
+		if (recovery_count > 4) {
+			win_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes);
+		} else {
+			eliminate_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes);
+		}
+	}
 
 	// Now that the columns that are missing have been identified,
 	// it is time to generate a bitmatrix to represent the original

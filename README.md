@@ -188,39 +188,39 @@ see the [Wirehair](https://github.com/catid/wirehair) library.
 
 ## Benchmarks
 
-##### liblonghair.a on Macbook Air (1.7 GHz Core i5-2557M Sandy Bridge, July 2011):
+##### liblonghair.a on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
 
 ~~~
 Using 1296 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
 
-Encoded k=29 data blocks with m=1 recovery blocks in 3 usec : 12528 MB/s
-+ Decoded 1 erasures in 2 usec : 18792 MB/s
-Encoded k=29 data blocks with m=2 recovery blocks in 16 usec : 2349 MB/s
-+ Decoded 2 erasures in 27 usec : 1392 MB/s
-Encoded k=29 data blocks with m=3 recovery blocks in 37 usec : 1015.78 MB/s
-+ Decoded 3 erasures in 57 usec : 659.368 MB/s
-Encoded k=29 data blocks with m=4 recovery blocks in 56 usec : 671.143 MB/s
-+ Decoded 4 erasures in 94 usec : 399.83 MB/s
-Encoded k=29 data blocks with m=5 recovery blocks in 53 usec : 709.132 MB/s
-+ Decoded 5 erasures in 124 usec : 303.097 MB/s
-Encoded k=29 data blocks with m=6 recovery blocks in 62 usec : 606.194 MB/s
-+ Decoded 6 erasures in 148 usec : 253.946 MB/s
-Encoded k=29 data blocks with m=7 recovery blocks in 75 usec : 501.12 MB/s
-+ Decoded 7 erasures in 179 usec : 209.966 MB/s
-Encoded k=29 data blocks with m=8 recovery blocks in 80 usec : 469.8 MB/s
-+ Decoded 8 erasures in 208 usec : 180.692 MB/s
-Encoded k=29 data blocks with m=9 recovery blocks in 126 usec : 298.286 MB/s
-+ Decoded 9 erasures in 278 usec : 135.194 MB/s
-Encoded k=29 data blocks with m=10 recovery blocks in 132 usec : 284.727 MB/s
-+ Decoded 10 erasures in 308 usec : 122.026 MB/s
-Encoded k=29 data blocks with m=11 recovery blocks in 134 usec : 280.478 MB/s
-+ Decoded 11 erasures in 322 usec : 116.72 MB/s
-Encoded k=29 data blocks with m=12 recovery blocks in 168 usec : 223.714 MB/s
-+ Decoded 12 erasures in 372 usec : 101.032 MB/s
-Encoded k=29 data blocks with m=13 recovery blocks in 151 usec : 248.901 MB/s
-+ Decoded 13 erasures in 432 usec : 87 MB/s
-Encoded k=29 data blocks with m=14 recovery blocks in 210 usec : 178.971 MB/s
-+ Decoded 14 erasures in 430 usec : 87.4047 MB/s
+Encoded k=29 data blocks with m=1 recovery blocks in 2 usec : 18792 MB/s
++ Decoded 1 erasures in 1 usec : 37584 MB/s
+Encoded k=29 data blocks with m=2 recovery blocks in 12 usec : 3132 MB/s
++ Decoded 2 erasures in 13 usec : 2891.08 MB/s
+Encoded k=29 data blocks with m=3 recovery blocks in 26 usec : 1445.54 MB/s
++ Decoded 3 erasures in 30 usec : 1252.8 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 41 usec : 916.683 MB/s
++ Decoded 4 erasures in 49 usec : 767.02 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 39 usec : 963.692 MB/s
++ Decoded 5 erasures in 55 usec : 683.345 MB/s
+Encoded k=29 data blocks with m=6 recovery blocks in 44 usec : 854.182 MB/s
++ Decoded 6 erasures in 68 usec : 552.706 MB/s
+Encoded k=29 data blocks with m=7 recovery blocks in 52 usec : 722.769 MB/s
++ Decoded 7 erasures in 83 usec : 452.819 MB/s
+Encoded k=29 data blocks with m=8 recovery blocks in 59 usec : 637.017 MB/s
++ Decoded 8 erasures in 100 usec : 375.84 MB/s
+Encoded k=29 data blocks with m=9 recovery blocks in 63 usec : 596.571 MB/s
++ Decoded 9 erasures in 120 usec : 313.2 MB/s
+Encoded k=29 data blocks with m=10 recovery blocks in 70 usec : 536.914 MB/s
++ Decoded 10 erasures in 180 usec : 208.8 MB/s
+Encoded k=29 data blocks with m=11 recovery blocks in 94 usec : 399.83 MB/s
++ Decoded 11 erasures in 182 usec : 206.505 MB/s
+Encoded k=29 data blocks with m=12 recovery blocks in 98 usec : 383.51 MB/s
++ Decoded 12 erasures in 206 usec : 182.447 MB/s
+Encoded k=29 data blocks with m=13 recovery blocks in 104 usec : 361.385 MB/s
++ Decoded 13 erasures in 236 usec : 159.254 MB/s
+Encoded k=29 data blocks with m=14 recovery blocks in 111 usec : 338.595 MB/s
++ Decoded 14 erasures in 263 usec : 142.905 MB/s
 ~~~
 
 Note that the codec is specialized for the `m = 1` case and runs very quickly.
