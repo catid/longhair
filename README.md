@@ -89,7 +89,7 @@ To recover the original data, use the `cauchy_256_decode` function:
 	}
 
 	// Now the block_info elements that used to have redundant data are
-	// corrected in-place and now contain the original data.
+	// corrected in-place and contain the original data.
 ~~~
 
 The example above is just one way to use the `cauchy_256_decode` function.
