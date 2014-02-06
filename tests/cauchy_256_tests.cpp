@@ -25,6 +25,8 @@ static void print(const void *data, int bytes) {
 */
 
 //#define CAT_ENCODE_TIMES_ONLY
+#define CAT_WORST_CASE_BENCHMARK
+#define CAT_REASONABLE_RECOVERY_COUNT
 
 int main() {
 	m_clock.OnInitialize();
@@ -45,7 +47,11 @@ int main() {
 	u8 heat_map[256 * 256] = { 0 };
 
 	for (int block_count = 1; block_count < 256; ++block_count) {
+#ifdef CAT_REASONABLE_RECOVERY_COUNT
+		for (int recovery_block_count = 1; recovery_block_count <= (block_count / 2) && recovery_block_count < (256 - block_count); ++recovery_block_count) {
+#else
 		for (int recovery_block_count = 1; recovery_block_count < (256 - block_count); ++recovery_block_count) {
+#endif
 			u8 *data = new u8[block_bytes * block_count];
 			u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
 			Block *blocks = new Block[block_count];
@@ -53,10 +59,14 @@ int main() {
 			double sum_encode = 0;
 
 			int erasures_count;
-#ifdef CAT_ENCODE_TIMES_ONLY
-			for (erasures_count = 1; erasures_count <= 4 && erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+#ifdef CAT_WORST_CASE_BENCHMARK
+			erasures_count = min(recovery_block_count, block_count); {
 #else
+# ifdef CAT_ENCODE_TIMES_ONLY
+			for (erasures_count = 1; erasures_count <= 4 && erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+# else
 			for (erasures_count = 1; erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {
+# endif
 #endif
 				for (int ii = 0; ii < block_bytes * block_count; ++ii) {
 					data[ii] = (u8)prng.Next();
