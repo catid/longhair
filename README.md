@@ -165,7 +165,7 @@ for rateless codes at this time is likely [Wirehair](https://github.com/catid/wi
 
 ## Benchmarks
 
-For small k this thing is ridiculously fast on my laptop:
+##### liblonghair.a on Macbook Air (1.7 GHz Core i5-2557M Sandy Bridge, July 2011):
 
 ~~~
 Using 1296 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
