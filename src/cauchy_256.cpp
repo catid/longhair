@@ -759,6 +759,87 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	return 0;
 }
 
+static void win_encode(int k, int m, const u8 *matrix, int stride, const u8 *data, u8 *out, int subbytes) {
+	static const int PRECOMP_TABLE_SIZE = 11;
+
+	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+	u8 *table_stack[16 * 2] = {0};
+	u8 **tables[2] = {
+		table_stack, table_stack + 16
+	};
+
+	// Fill in tables
+	u8 *precomp_ptr = precomp;
+	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
+		u8 **table = tables[ii];
+
+		table[3] = precomp_ptr;
+		table[5] = precomp_ptr + subbytes;
+		table[6] = precomp_ptr + subbytes * 2;
+		table[7] = precomp_ptr + subbytes * 3;
+		for (int jj = 9; jj < 16; ++jj) {
+			table[jj] = precomp_ptr + subbytes * (jj - 5);
+		}
+	}
+
+	// For each column to generate,
+	for (int x = 0; x < k; ++x, ++matrix) {
+		const u8 *row = matrix;
+
+		// Fill in tables
+		for (int ii = 0; ii < 2; ++ii, data += subbytes * 4) {
+			u8 **table = tables[ii];
+
+			table[1] = (u8 *)data;
+			table[2] = (u8 *)data + subbytes;
+			table[4] = (u8 *)data + subbytes * 2;
+			table[8] = (u8 *)data + subbytes * 3;
+
+			memxor_set(table[3], table[1], table[2], subbytes);
+			memxor_set(table[6], table[2], table[4], subbytes);
+			memxor_set(table[5], table[1], table[4], subbytes);
+			memxor_set(table[7], table[1], table[6], subbytes);
+			memxor_set(table[9], table[1], table[8], subbytes);
+			memxor_set(table[12], table[4], table[8], subbytes);
+			memxor_set(table[10], table[2], table[8], subbytes);
+			memxor_set(table[11], table[3], table[8], subbytes);
+			memxor_set(table[13], table[1], table[12], subbytes);
+			memxor_set(table[14], table[2], table[12], subbytes);
+			memxor_set(table[15], table[3], table[12], subbytes);
+		}
+
+		// For each of the rows,
+		u8 *dest = out;
+		for (int y = 1; y < m; ++y, row += stride) {
+			u8 slice = row[0];
+
+			// Generate 8x8 submatrix and XOR in bits as needed
+			for (int bit_y = 0;; ++bit_y) {
+				int low = slice & 15;
+				int high = slice >> 4;
+
+				// Add
+				if (low && high) {
+					memxor_add(dest, tables[0][low], tables[1][high], subbytes);
+				} else if (low) {
+					memxor(dest, tables[0][low], subbytes);
+				} else {
+					memxor(dest, tables[1][high], subbytes);
+				}
+				dest += subbytes;
+
+				if (bit_y >= 7) {
+					break;
+				}
+
+				slice = GFC256Multiply(slice, 2);
+			}
+		}
+	}
+
+	delete []precomp;
+}
+
 extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecovery_blocks, int block_bytes) {
 	const u8 *data = reinterpret_cast<const u8 *>( vdata );
 	u8 *recovery_blocks = reinterpret_cast<u8 *>( vrecovery_blocks );
@@ -803,38 +884,44 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecover
 
 	// Start on the second recovery block
 	u8 *out = recovery_blocks + block_bytes;
-	const int subbytes = block_bytes / 8;
+	const int subbytes = block_bytes >> 3;
 
 	// Clear output buffer
 	memset(out, 0, block_bytes * (m - 1));
 
-	// For each remaining row to generate,
-	const u8 *row = matrix;
-	for (int y = 1; y < m; ++y, row += stride, out += block_bytes) {
-		const u8 *src = data;
+	// If the number of symbols to generate gets larger,
+	if (m > 6) {
+		// Start using a windowed approach to encoding
+		win_encode(k, m, matrix, stride, data, out, subbytes);
+	} else {
+		// For each remaining row to generate,
+		const u8 *row = matrix;
+		for (int y = 1; y < m; ++y, row += stride, out += block_bytes) {
+			const u8 *src = data;
 
-		// For each symbol column,
-		const u8 *column = row;
-		for (int x = 0; x < k; ++x, ++column, src += block_bytes) {
-			u8 slice = column[0];
-			DLOG(cout << "ENCODE: Using " << (int)slice << " at " << x << ", " << y << endl;)
-			u8 *dest = out;
+			// For each symbol column,
+			const u8 *column = row;
+			for (int x = 0; x < k; ++x, ++column, src += block_bytes) {
+				u8 slice = column[0];
+				DLOG(cout << "ENCODE: Using " << (int)slice << " at " << x << ", " << y << endl;)
+				u8 *dest = out;
 
-			// Generate 8x8 submatrix and XOR in bits as needed
-			for (int bit_y = 0;; ++bit_y) {
-				const u8 *src_x = src;
-				for (int bit_x = 0; bit_x < 8; ++bit_x, src_x += subbytes) {
-					if (slice & (1 << bit_x)) {
-						memxor(dest, src_x, subbytes);
+				// Generate 8x8 submatrix and XOR in bits as needed
+				for (int bit_y = 0;; ++bit_y) {
+					const u8 *src_x = src;
+					for (int bit_x = 0; bit_x < 8; ++bit_x, src_x += subbytes) {
+						if (slice & (1 << bit_x)) {
+							memxor(dest, src_x, subbytes);
+						}
 					}
-				}
 
-				if (bit_y >= 7) {
-					break;
-				}
+					if (bit_y >= 7) {
+						break;
+					}
 
-				slice = GFC256Multiply(slice, 2);
-				dest += subbytes;
+					slice = GFC256Multiply(slice, 2);
+					dest += subbytes;
+				}
 			}
 		}
 	}
