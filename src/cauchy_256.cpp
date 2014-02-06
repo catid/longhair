@@ -890,7 +890,7 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecover
 	memset(out, 0, block_bytes * (m - 1));
 
 	// If the number of symbols to generate gets larger,
-	if (m > 6) {
+	if (m > 4) {
 		// Start using a windowed approach to encoding
 		win_encode(k, m, matrix, stride, data, out, subbytes);
 	} else {
