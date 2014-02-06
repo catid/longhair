@@ -86,12 +86,8 @@ factor into the performance of the code.
 
 This means that if the number of recovery blocks to generate is small, then it
 may be worthwhile using the GF(256) version of the codec even for larger amounts
-of data.  The break-even point for performance is around m < 14 symbols, where
+of data.  The break-even point for performance is around m < 20 symbols, where
 the simpler CRS codes start performing better than Wirehair for encoding.
-
-I think if windowing is applied to the encoder, I can push this farther, so
-before working on the GF(64) code I'm going to add some optimizations to the
-GF(256) case.  And the GF(256) version will be included in the final codec.
 
 
 #### Credits

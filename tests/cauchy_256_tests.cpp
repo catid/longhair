@@ -33,7 +33,7 @@ int main() {
 
 	m_clock.usec();
 
-	cout << "Cauchy matrix solver" << endl;
+	cout << "Cauchy RS Codec Unit Tester" << endl;
 
 	int block_bytes = 8 * 162; // a multiple of 8
 
@@ -44,7 +44,7 @@ int main() {
 
 	u8 heat_map[256 * 256] = { 0 };
 
-	for (int block_count = 2; block_count < 255; ++block_count) {
+	for (int block_count = 1; block_count < 256; ++block_count) {
 		for (int recovery_block_count = 2; recovery_block_count < (256 - block_count); ++recovery_block_count) {
 			u8 *data = new u8[block_bytes * block_count];
 			u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
