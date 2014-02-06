@@ -24,6 +24,8 @@ Documentation is provided in the header file [cauchy_256.h](https://github.com/c
 When your application starts up it should call `cauchy_init()` to verify that the library is linked properly:
 
 ~~~
+	#include "cauchy_256.h"
+
 	if (cauchy_init()) {
 		// Wrong static library
 		exit(1);
