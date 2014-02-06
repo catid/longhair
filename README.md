@@ -13,14 +13,9 @@ improves on Jerasure's performance for this particular use case.
 A simple C API is provided to make it easy to incorporate into existing
 projects.
 
-
 ## TODO
 
-This is a work in progress.  What is here should be 100% working for k (number of packets) < 256.
-
-The final version of this library will also have an optimized API for k < 64,
-which should be quite a bit faster.  In practice I will only be using it for
-k < 32, and switching to Wirehair for k >= 32.
+The decoder needs the same treatment as the encoder for windowed optimization.
 
 
 ## Benchmarks

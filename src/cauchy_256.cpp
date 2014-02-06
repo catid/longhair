@@ -392,6 +392,7 @@ static void cauchy_decode_m1(int k, Block *blocks, int block_bytes) {
 	Block *erased = blocks;
 	for (int ii = 0; ii < k; ++ii, ++erased) {
 		if (erased->row >= k) {
+			DLOG(cout << "Found erased row " << ii << " on block row " << (int)erased->row << endl;)
 			break;
 		}
 	}
@@ -399,10 +400,9 @@ static void cauchy_decode_m1(int k, Block *blocks, int block_bytes) {
 	// XOR all other blocks into the recovery block
 	u8 *out = erased->data;
 	const u8 *in = 0;
-	int original_block_count = k - 1;
 
 	// For each block,
-	for (int ii = 0; ii < original_block_count; ++ii) {
+	for (int ii = 0; ii < k; ++ii) {
 		Block *block = blocks + ii;
 		if (block != erased) {
 			if (!in) {
