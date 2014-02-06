@@ -158,7 +158,7 @@ what has been improved, refer to the source code comments.
 
 There is another alternative way to do erasure codes efficiently called rateless codes,
 where there is no need to specify a value for `m` and you can generate as many redundant
-symbols as needed.  This saves a bit of overhead in actual UDP protocols.  Rateless codes
+blocks as needed.  This saves a bit of overhead in actual UDP protocols.  Rateless codes
 tend to be more efficient for high-speed protocols like file transfer.  The best software
 for rateless codes at this time is likely [Wirehair](https://github.com/catid/wirehair).
 
