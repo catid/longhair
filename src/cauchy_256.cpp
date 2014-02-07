@@ -152,6 +152,8 @@
  * Windowed bitmatrix multiplication is implemented in win_encode().
  */
 
+//#define CAT_CAUCHY_LOG
+
 // Debugging
 #ifdef CAT_CAUCHY_LOG
 #include <iostream>
@@ -169,6 +171,17 @@ using namespace std;
 using namespace cat;
 
 #ifdef CAT_CAUCHY_LOG
+
+static void print_word(const u64 row, int bits) {
+	for (int jj = 0; jj < bits; ++jj) {
+		if (row & ((u64)1 << jj)) {
+			cout << "1";
+		} else {
+			cout << "0";
+		}
+	}
+	cout << endl;
+}
 
 static void print_words(const u64 *row, int words) {
 	for (int ii = 0; ii < words; ++ii) {
@@ -523,7 +536,7 @@ static void win_original(Block *original[256], int original_count,
 			// If this matrix element is an 8x8 identity matrix,
 			if (matrix_row < 0 || row[0] == 1) {
 				// XOR whole block at once
-				memxor(recovery_block->data, original_block->data, subbytes * 8);
+				memxor(dest, original_block->data, subbytes * 8);
 			} else {
 				u8 slice = row[0];
 
@@ -750,6 +763,216 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 	}
 }
 
+static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
+	static const int PRECOMP_TABLE_SIZE = 11;
+
+	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+	u8 *table_stack[16 * 2] = {0};
+	u8 **tables[2] = {
+		table_stack, table_stack + 16
+	};
+
+	// Fill in tables
+	u8 *precomp_ptr = precomp;
+	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
+		u8 **table = tables[ii];
+
+		table[3] = precomp_ptr;
+		table[5] = precomp_ptr + subbytes;
+		table[6] = precomp_ptr + subbytes * 2;
+		table[7] = precomp_ptr + subbytes * 3;
+		for (int jj = 9; jj < 16; ++jj) {
+			table[jj] = precomp_ptr + subbytes * (jj - 5);
+		}
+	}
+
+	// For each column to generate,
+	for (int x = rows - 1; x >= 3; --x) {
+		Block *block_x = recovery[x];
+
+		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
+
+		DLOG(cout << "win_back_sub: " << x << endl;)
+
+		u8 *data = block_x->data + subbytes * 4;
+
+		u64 *bit_row = bitmatrix + bitstride * ((x + 1) * 8 - 2) + (x / 8);
+		int bit_shift = (x % 8) * 8 + 4;
+
+		// Fill in tables
+		u8 **table = tables[0];
+		table[1] = (u8 *)data;
+		table[2] = (u8 *)data + subbytes;
+		table[4] = (u8 *)data + subbytes * 2;
+		table[8] = (u8 *)data + subbytes * 3;
+
+		DLOG(cout << "For lower-right triangle:" << endl;)
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		// Clear upper triangle
+		u64 word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[4], table[8], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[2], table[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(table[2], table[4], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[1], table[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(table[1], table[4], subbytes);
+		}
+		if (word & 2) {
+			memxor(table[1], table[2], subbytes);
+		}
+
+		// Generate table
+		memxor_set(table[3], table[1], table[2], subbytes);
+		memxor_set(table[6], table[2], table[4], subbytes);
+		memxor_set(table[5], table[1], table[4], subbytes);
+		memxor_set(table[7], table[1], table[6], subbytes);
+		memxor_set(table[9], table[1], table[8], subbytes);
+		memxor_set(table[12], table[4], table[8], subbytes);
+		memxor_set(table[10], table[2], table[8], subbytes);
+		memxor_set(table[11], table[3], table[8], subbytes);
+		memxor_set(table[13], table[1], table[12], subbytes);
+		memxor_set(table[14], table[2], table[12], subbytes);
+		memxor_set(table[15], table[3], table[12], subbytes);
+
+		data -= subbytes * 4;
+
+		u8 **htable = tables[1];
+		htable[1] = (u8 *)data;
+		htable[2] = (u8 *)data + subbytes;
+		htable[4] = (u8 *)data + subbytes * 2;
+		htable[8] = (u8 *)data + subbytes * 3;
+
+		for (int ii = 8; ii > 0; ii >>= 1) {
+			int w = (u8)(bit_row[0] >> bit_shift) & 15;
+			bit_row -= bitstride;
+
+			DLOG(cout << "For upper-right square at " << ii << " : ";)
+			DLOG(print_word(w, 4);)
+
+			if (w) {
+				memxor(htable[ii], table[w], subbytes);
+			}
+		}
+
+		bit_row += bitstride * 3;
+		bit_shift -= 4;
+
+		DLOG(cout << "For upper-left triangle:" << endl;)
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		// Clear upper triangle
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[4], htable[8], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0];
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[2], htable[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(htable[2], htable[4], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0];
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[1], htable[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(htable[1], htable[4], subbytes);
+		}
+		if (word & 2) {
+			memxor(htable[1], htable[2], subbytes);
+		}
+
+		// Generate table
+		memxor_set(htable[3], htable[1], htable[2], subbytes);
+		memxor_set(htable[6], htable[2], htable[4], subbytes);
+		memxor_set(htable[5], htable[1], htable[4], subbytes);
+		memxor_set(htable[7], htable[1], htable[6], subbytes);
+		memxor_set(htable[9], htable[1], htable[8], subbytes);
+		memxor_set(htable[12], htable[4], htable[8], subbytes);
+		memxor_set(htable[10], htable[2], htable[8], subbytes);
+		memxor_set(htable[11], htable[3], htable[8], subbytes);
+		memxor_set(htable[13], htable[1], htable[12], subbytes);
+		memxor_set(htable[14], htable[2], htable[12], subbytes);
+		memxor_set(htable[15], htable[3], htable[12], subbytes);
+
+		// For each of the rows,
+		for (int y = x - 1; y >= 0; --y) {
+			Block *block_y = recovery[y];
+
+			u8 *dest = block_y->data + 7 * subbytes;
+
+			DLOG(cout << "For row " << y << ":" << endl;)
+
+			for (int jj = 0; jj < 8; ++jj, bit_row -= bitstride, dest -= subbytes) {
+				u8 slice = (u8)(bit_row[0] >> bit_shift);
+				int low = slice & 15;
+				int high = slice >> 4;
+
+				DLOG(cout << "Applying slice: ";)
+				DLOG(print_word(slice, 8);)
+
+				// Add
+				if (low && high) {
+					memxor_add(dest, htable[low], table[high], subbytes);
+				} else if (low) {
+					memxor(dest, htable[low], subbytes);
+				} else {
+					memxor(dest, table[high], subbytes);
+				}
+			}
+		}
+	}
+
+	for (int pivot = 3 * 8 - 1; pivot > 0; --pivot) {
+		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+		const u64 *offset = bitmatrix + (pivot >> 6);
+		const u64 mask = (u64)1 << (pivot & 63);
+
+		DLOG(cout << "BS pivot " << pivot << endl;)
+
+		for (int other_row = pivot - 1; other_row >= 0; --other_row) {
+			if (offset[bitstride * other_row] & mask) {
+				DLOG(cout << "+ Backsub to row " << other_row << endl;)
+				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
+
+				memxor(dest, src, subbytes);
+			}
+		}
+	}
+
+	delete []precomp;
+}
+
 static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
 	for (int pivot = rows * 8 - 1; pivot > 0; --pivot) {
 		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
@@ -882,7 +1105,11 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// itself is not adjusted since the important result is the output values.
 
 	// Use back-substitution to solve value for each column
-	back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	if (recovery_count > 4) {
+		win_back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	} else {
+		back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	}
 
 	// Free temporary space
 	delete []bitmatrix;
@@ -894,6 +1121,7 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	return 0;
 }
 
+// Windowed version of encoder
 static void win_encode(int k, int m, const u8 *matrix, int stride, const u8 *data, u8 *out, int subbytes) {
 	static const int PRECOMP_TABLE_SIZE = 11;
 

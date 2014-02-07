@@ -46,7 +46,7 @@ int main() {
 
 	u8 heat_map[256 * 256] = { 0 };
 
-	for (int block_count = 1; block_count < 256; ++block_count) {
+	for (int block_count = 29; block_count < 256; ++block_count) {
 #ifdef CAT_REASONABLE_RECOVERY_COUNT
 		for (int recovery_block_count = 1; recovery_block_count <= (block_count / 2) && recovery_block_count < (256 - block_count); ++recovery_block_count) {
 #else
