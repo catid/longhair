@@ -36,7 +36,7 @@ int main() {
 
 	cout << "Cauchy RS Codec Unit Tester" << endl;
 
-	int block_bytes = 8 * 2; // a multiple of 8
+	int block_bytes = 8 * 162; // a multiple of 8
 
 	cout << "Using " << block_bytes << " bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes" << endl;
 
