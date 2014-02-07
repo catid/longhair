@@ -152,7 +152,7 @@
  * Windowed bitmatrix multiplication is implemented in win_encode().
  */
 
-#define CAT_CAUCHY_LOG
+//#define CAT_CAUCHY_LOG
 
 // Debugging
 #ifdef CAT_CAUCHY_LOG
@@ -889,7 +889,7 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 
 		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
 
-		word = bit_row[0];
+		word = bit_row[0] >> bit_shift;
 		bit_row -= bitstride;
 		if (word & 8) {
 			memxor(htable[2], htable[8], subbytes);
@@ -900,7 +900,7 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 
 		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
 
-		word = bit_row[0];
+		word = bit_row[0] >> bit_shift;
 		bit_row -= bitstride;
 		if (word & 8) {
 			memxor(htable[1], htable[8], subbytes);
