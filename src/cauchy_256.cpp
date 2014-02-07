@@ -152,7 +152,7 @@
  * Windowed bitmatrix multiplication is implemented in win_encode().
  */
 
-//#define CAT_CAUCHY_LOG
+#define CAT_CAUCHY_LOG
 
 // Debugging
 #ifdef CAT_CAUCHY_LOG
