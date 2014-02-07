@@ -12,7 +12,6 @@ using namespace cat;
 
 static Clock m_clock;
 
-/*
 static void print(const void *data, int bytes) {
 	const u8 *in = reinterpret_cast<const u8 *>( data );
 
@@ -22,7 +21,7 @@ static void print(const void *data, int bytes) {
 	}
 	cout << dec << endl;
 }
-*/
+
 
 //#define CAT_ENCODE_TIMES_ONLY
 #define CAT_WORST_CASE_BENCHMARK
@@ -102,6 +101,12 @@ int main() {
 				double decode_time = t1 - t0;
 
 				cout << "+ Decoded " << erasures_count << " erasures in " << decode_time << " usec : " << (block_bytes * block_count / decode_time) << " MB/s" << endl;
+
+				for (int ii = 0; ii < erasures_count; ++ii) {
+					const u8 *orig = data + ii * block_bytes;
+					print(orig, block_bytes / 8);
+					print(blocks[ii].data, block_bytes / 8);
+				}
 
 				for (int ii = 0; ii < erasures_count; ++ii) {
 					const u8 *orig = data + ii * block_bytes;

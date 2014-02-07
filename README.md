@@ -175,9 +175,9 @@ is more applicable:
 ## Comparisons with Alternatives
 
 This library implements Cauchy Reed-Solomon (CRS) codes as introduced by
-[Jerasure](https://github.com/tsuraan/Jerasure).  This library improves on Jerasure in
-a number of new ways that have probably never been done before.  For full details on
-what has been improved, refer to the source code comments.
+[Jerasure](https://github.com/tsuraan/Jerasure).  This library improves on
+existing CRS codes in a number of novel ways to greatly increase throughput.
+For full details on what has been improved, refer to the source code comments.
 
 There is another alternative way to do erasure codes efficiently called rateless
 codes, where there is no need to specify a value for `m` and you can generate as

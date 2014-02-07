@@ -931,7 +931,7 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 
 			u8 *dest = block_y->data + 7 * subbytes;
 
-			DLOG(cout << "For row " << y << ":" << endl;)
+			DLOG(cout << "For row " << y << " at " << (u64)dest << endl;)
 
 			for (int jj = 0; jj < 8; ++jj, bit_row -= bitstride, dest -= subbytes) {
 				u8 slice = (u8)(bit_row[0] >> bit_shift);
