@@ -142,6 +142,8 @@
  * This 4-bit window technique starts being useful in practice at m = 5, and
  * improves the encoder speed by up to 300%.
  *
+ * This window technique is also used in the decoder to greatly improve speed.
+ *
  * Jerasure does attempt to do some row-reuse, but it tries to reuse the
  * *entire* bitmatrix row in its "smart schedule" mode.  This has very limited
  * performance impact and actually hurts performance in most of my test cases.
