@@ -31,8 +31,9 @@
 /*
  * Cauchy Reed Solomon (CRS) codes [1]
  *
- * For general purpose error correction under ~32 symbols it is either the best option,
- * or it is more flexible (due to patents/other awkwardness) than the alternatives.
+ * For general purpose error correction under ~32 symbols it is either the best
+ * option, or it is more flexible (due to patents/other awkwardness) than the
+ * alternatives.
  *
  * CRS codes are parameterized primarily by m, k, and w:
  * 	k = Number of original data blocks.
@@ -42,39 +43,43 @@
  * The choice of w limits k and m by the relation: k + m <= 2^w
  * So if w = 8, it can generate up to 256 blocks of original + correction data.
  *
- * In practice if you want to send more than 256 blocks of data there are definitely more
- * efficient options than CRS codes that scale much more gracefully, so w = 8 is a
- * flexible choice that does not require incredibly large tables and does not require an
- * irritating data massaging step to fit it into the field.
+ * In practice if you want to send more than 256 blocks of data there are
+ * definitely more efficient options than CRS codes that scale much more
+ * gracefully, so w = 8 is a flexible choice that does not require incredibly
+ * large tables and does not require an irritating data massaging step to fit
+ * input into the field.
  *
- * Note that m = 1 is a degenerate case where the best solution is to just XOR all of the k
- * input data blocks together.  So CRS codes are interesting for 1 < m < 32.
+ * Note that m = 1 is a degenerate case where the best solution is to just XOR
+ * all of the k input data blocks together.  So CRS codes are interesting for
+ * 1 < m < 32.
  *
- * These codes have been thoroughly explored by Dr. James Plank over the past ~15 years [1].
- * In this time there has not been a lot of work on improving Jerasure [2] to speed up CRS
- * codes for small datasets.
+ * These codes have been thoroughly explored by Dr. James Plank over the past
+ * ~15 years [1].  In this time there has not been a lot of work on improving
+ * Jerasure [2] to speed up CRS codes for small datasets.
  *
- * For example, all of the existing work on Jerasure is in reference to disk or cloud
- * storage applications where the file pieces are many megabytes in size.  A neglected area
- * of interest is packet error correction codes, where the data is small and the setup time
- * for the codes is critical.
+ * For example, all of the existing work on Jerasure is in reference to disk or
+ * cloud storage applications where the file pieces are many megabytes in size.
+ * A neglected area of interest is packet error correction codes, where the
+ * data is small and the setup time for the codes is critical.
  *
- * Jerasure is designed to be generic, so it has best matrices for m = 2 for all of the
- * values of w that may be of interest.  But it does not attempt to optimize for m > 2, which
- * is a huge optimization that is helpful for packet error correction use cases.
+ * Jerasure is designed to be generic, so it has best matrices for m = 2 for
+ * all of the values of w that may be of interest.  But it does not attempt to
+ * optimize for m > 2, which is a huge optimization that is helpful for packet
+ * error correction use cases.
  *
- * Jerasure only tries one generator polynomial for GF(256) instead of exploring all 16
- * of the possible generators to find minimal Cauchy matrices.  6% improvement is possible!
+ * Jerasure only tries one generator polynomial for GF(256) instead of
+ * exploring all 16 of the possible generators to find minimal Cauchy matrices.
+ * 6% improvement is possible!
  *
- * Jerasure uses a "matrix improvement" formula to quickly derive an optimal Cauchy matrix
- * modified to reduce the number of ones.  I came up with a better approach that has
- * roughly 30% fewer ones in the resulting matrix, while also initializing faster.
+ * Jerasure uses a "matrix improvement" formula to quickly derive an optimal
+ * Cauchy matrix modified to reduce the number of ones.  I came up with a
+ * better approach that has roughly 30% fewer ones in the resulting matrix,
+ * while also initializing faster.
  *
- * Jerasure is not optimized for one value of w.  It may be possible to speed up the codec
- * using w = 7, but a generic implementation that uses w = 7 will not run faster than a
- * specialized implementation that uses w = 8.
- *
- * Jerasure also misses a number of opportunities for optimization in the solver.
+ * It may be possible to speed up the codec using other values of w, but a
+ * generic implementation that uses w = 7 will not run faster than a
+ * specialized implementation that uses w = 8, and speed above 400 MB/s is not
+ * especially meaningful even if it can be achieved.
  *
  * [1] "Optimizing Cauchy Reed-Solomon Codes for Fault-Tolerant Storage Applications" (2005)
  *	http://web.eecs.utk.edu/~plank/plank/papers/CS-05-569.pdf
@@ -208,8 +213,11 @@ static void print_matrix(const u64 *matrix, int word_stride, int rows) {
 
 #endif // CAT_CAUCHY_LOG
 
-// GF(256) math tables:
-// Generated with optimal polynomial 0x187 = 110000111
+
+
+//// GF(256) math
+
+// Tables generated with optimal polynomial 0x187 = 110000111b
 
 static const u16 GFC256_LOG_TABLE[256] = {
 512,255,1,99,2,198,100,106,3,205,199,188,101,126,107,42,4,141,206,78,
@@ -325,6 +333,16 @@ static void GFC256Init() {
 	}
 }
 
+extern "C" int _cauchy_256_init(int expected_version) {
+	if (expected_version != CAUCHY_256_VERSION) {
+		return -1;
+	}
+
+	GFC256Init();
+
+	return 0;
+}
+
 // return x * y in GF(256)
 // For repeated multiplication by a constant, it is faster to put the constant in y.
 static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y) {
@@ -336,6 +354,9 @@ static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y) {
 static CAT_INLINE u8 GFC256Divide(u8 x, u8 y) {
 	return GFC256_DIV_TABLE[((u32)y << 8) + x];
 }
+
+
+//// Cauchy matrix
 
 #include "cauchy_tables_256.inc"
 
@@ -400,6 +421,9 @@ static const u8 *cauchy_matrix(int k, int m, int &stride,
 
 	return matrix;
 }
+
+
+//// Decoder
 
 // Specialized fast decoder for m = 1
 static void cauchy_decode_m1(int k, Block *blocks, int block_bytes) {
@@ -994,19 +1018,6 @@ static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, in
 	}
 }
 
-
-//// API
-
-extern "C" int _cauchy_256_init(int expected_version) {
-	if (expected_version != CAUCHY_256_VERSION) {
-		return -1;
-	}
-
-	GFC256Init();
-
-	return 0;
-}
-
 extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// For the special case of one erasure,
 	if (m == 1) {
@@ -1122,6 +1133,9 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 
 	return 0;
 }
+
+
+//// Encoder
 
 // Windowed version of encoder
 static void win_encode(int k, int m, const u8 *matrix, int stride, const u8 *data, u8 *out, int subbytes) {
