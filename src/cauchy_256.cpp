@@ -177,9 +177,14 @@ using namespace std;
 #include "MemSwap.hpp"
 using namespace cat;
 
+// Constants for precomputed tables
+static const int PRECOMP_TABLE_THRESH = 4;
+static const int PRECOMP_TABLE_SIZE = 11;
+
 #ifdef CAT_CAUCHY_LOG
 
-static void print_word(const u64 row, int bits) {
+static void print_word(const u64 row, int bits)
+{
 	for (int jj = 0; jj < bits; ++jj) {
 		if (row & ((u64)1 << jj)) {
 			cout << "1";
@@ -190,7 +195,8 @@ static void print_word(const u64 row, int bits) {
 	cout << endl;
 }
 
-static void print_words(const u64 *row, int words) {
+static void print_words(const u64 *row, int words)
+{
 	for (int ii = 0; ii < words; ++ii) {
 		for (int jj = 0; jj < 64; ++jj) {
 			if (row[ii] & ((u64)1 << jj)) {
@@ -203,8 +209,10 @@ static void print_words(const u64 *row, int words) {
 	cout << endl;
 }
 
-static void print_matrix(const u64 *matrix, int word_stride, int rows) {
+static void print_matrix(const u64 *matrix, int word_stride, int rows)
+{
 	cout << "Printing matrix with " << word_stride << " words per row, and " << rows << " rows:" << endl;
+
 	for (int ii = 0; ii < rows; ++ii) {
 		print_words(matrix, word_stride);
 		matrix += word_stride;
@@ -293,7 +301,8 @@ static const u8 GFC256_INV_TABLE[256] = {
 u8 * CAT_RESTRICT GFC256_MUL_TABLE = 0;
 u8 * CAT_RESTRICT GFC256_DIV_TABLE = 0;
 
-static void GFC256Init() {
+static void GFC256Init()
+{
 	if (GFC256_MUL_TABLE) {
 		return;
 	}
@@ -333,7 +342,8 @@ static void GFC256Init() {
 	}
 }
 
-extern "C" int _cauchy_256_init(int expected_version) {
+extern "C" int _cauchy_256_init(int expected_version)
+{
 	if (expected_version != CAUCHY_256_VERSION) {
 		return -1;
 	}
@@ -345,13 +355,15 @@ extern "C" int _cauchy_256_init(int expected_version) {
 
 // return x * y in GF(256)
 // For repeated multiplication by a constant, it is faster to put the constant in y.
-static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y) {
+static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y)
+{
 	return GFC256_MUL_TABLE[((u32)y << 8) + x];
 }
 
 // return x / y in GF(256)
 // Memory-access optimized for constant divisors in y.
-static CAT_INLINE u8 GFC256Divide(u8 x, u8 y) {
+static CAT_INLINE u8 GFC256Divide(u8 x, u8 y)
+{
 	return GFC256_DIV_TABLE[((u32)y << 8) + x];
 }
 
@@ -364,7 +376,8 @@ static CAT_INLINE u8 GFC256Divide(u8 x, u8 y) {
 
 // Precondition: m > 1
 static const u8 *cauchy_matrix(int k, int m, int &stride,
-		u8 stack[CAT_CAUCHY_MATRIX_STACK_SIZE], bool &dynamic_memory) {
+		u8 stack[CAT_CAUCHY_MATRIX_STACK_SIZE], bool &dynamic_memory)
+{
 	dynamic_memory = false;
 
 	switch (m) {
@@ -426,7 +439,8 @@ static const u8 *cauchy_matrix(int k, int m, int &stride,
 //// Decoder
 
 // Specialized fast decoder for m = 1
-static void cauchy_decode_m1(int k, Block *blocks, int block_bytes) {
+static void cauchy_decode_m1(int k, Block *blocks, int block_bytes)
+{
 	// Find erased row
 	Block *erased = blocks;
 	for (int ii = 0; ii < k; ++ii, ++erased) {
@@ -462,7 +476,8 @@ static void cauchy_decode_m1(int k, Block *blocks, int block_bytes) {
 // Sort blocks into original and recovery blocks
 static void sort_blocks(int k, Block *blocks,
 		Block *original[256], int &original_count,
-		Block *recovery[256], int &recovery_count, u8 erasures[256]) {
+		Block *recovery[256], int &recovery_count, u8 erasures[256])
+{
 	Block *block = blocks;
 	original_count = 0;
 	recovery_count = 0;
@@ -496,29 +511,9 @@ static void sort_blocks(int k, Block *blocks,
 // Windowed version of eliminate_original
 static void win_original(Block *original[256], int original_count,
 						 Block *recovery[256], int recovery_count,
-						 const u8 *matrix, int stride, int subbytes) {
-	static const int PRECOMP_TABLE_SIZE = 11;
-
-	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
-	u8 *table_stack[16 * 2] = {0};
-	u8 **tables[2] = {
-		table_stack, table_stack + 16
-	};
-
-	// Fill in tables
-	u8 *precomp_ptr = precomp;
-	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
-		u8 **table = tables[ii];
-
-		table[3] = precomp_ptr;
-		table[5] = precomp_ptr + subbytes;
-		table[6] = precomp_ptr + subbytes * 2;
-		table[7] = precomp_ptr + subbytes * 3;
-		for (int jj = 9; jj < 16; ++jj) {
-			table[jj] = precomp_ptr + subbytes * (jj - 5);
-		}
-	}
-
+						 const u8 *matrix, int stride, int subbytes,
+						 u8 **tables[2])
+{
 	// For each column to generate,
 	for (int jj = 0; jj < original_count; ++jj) {
 		Block *original_block = original[jj];
@@ -596,7 +591,8 @@ static void win_original(Block *original[256], int original_count,
 
 static void eliminate_original(Block *original[256], int original_count,
 							   Block *recovery[256], int recovery_count,
-							   const u8 *matrix, int stride, int subbytes) {
+							   const u8 *matrix, int stride, int subbytes)
+{
 	DLOG(cout << "Eliminating original:" << endl;)
 
 	int row_offset = original_count + recovery_count + 1;
@@ -652,7 +648,8 @@ static void eliminate_original(Block *original[256], int original_count,
 
 static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 						const u8 *matrix, int stride, const u8 erasures[256],
-						int &bitstride) {
+						int &bitstride)
+{
 	// Allocate the bitmatrix
 	int bitrows = recovery_count * 8;
 	bitstride = (bitrows + 63) / 64;
@@ -732,15 +729,9 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 	return bitmatrix;
 }
 
-static void win_gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
-	static const int PRECOMP_TABLE_SIZE = 11;
-
-	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
-	u8 *table_stack[16 * 2] = {0};
-	u8 **tables[2] = {
-		table_stack, table_stack + 16
-	};
-
+static void win_gaussian_elimination(int rows, Block *recovery[256],
+									 u64 *bitmatrix, int bitstride, int subbytes)
+{
 	const int bit_rows = rows * 8;
 
 	u64 mask = 1;
@@ -779,7 +770,132 @@ static void win_gaussian_elimination(int rows, Block *recovery[256], u64 *bitmat
 			}
 		}
 
-		// TODO: Set up precomputed table
+		// Fill in tables
+		u8 **table = tables[0];
+		table[1] = (u8 *)data;
+		table[2] = (u8 *)data + subbytes;
+		table[4] = (u8 *)data + subbytes * 2;
+		table[8] = (u8 *)data + subbytes * 3;
+
+		DLOG(cout << "For lower-right triangle:" << endl;)
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		// Clear upper triangle
+		u64 word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[4], table[8], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[2], table[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(table[2], table[4], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(table[1], table[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(table[1], table[4], subbytes);
+		}
+		if (word & 2) {
+			memxor(table[1], table[2], subbytes);
+		}
+
+		// Generate table
+		memxor_set(table[3], table[1], table[2], subbytes);
+		memxor_set(table[6], table[2], table[4], subbytes);
+		memxor_set(table[5], table[1], table[4], subbytes);
+		memxor_set(table[7], table[1], table[6], subbytes);
+		memxor_set(table[9], table[1], table[8], subbytes);
+		memxor_set(table[12], table[4], table[8], subbytes);
+		memxor_set(table[10], table[2], table[8], subbytes);
+		memxor_set(table[11], table[3], table[8], subbytes);
+		memxor_set(table[13], table[1], table[12], subbytes);
+		memxor_set(table[14], table[2], table[12], subbytes);
+		memxor_set(table[15], table[3], table[12], subbytes);
+
+		data -= subbytes * 4;
+
+		u8 **htable = tables[1];
+		htable[1] = (u8 *)data;
+		htable[2] = (u8 *)data + subbytes;
+		htable[4] = (u8 *)data + subbytes * 2;
+		htable[8] = (u8 *)data + subbytes * 3;
+
+		for (int ii = 8; ii > 0; ii >>= 1) {
+			int w = (u8)(bit_row[0] >> bit_shift) & 15;
+			bit_row -= bitstride;
+
+			DLOG(cout << "For upper-right square at " << ii << " : ";)
+			DLOG(print_word(w, 4);)
+
+			if (w) {
+				memxor(htable[ii], table[w], subbytes);
+			}
+		}
+
+		bit_row += bitstride * 3;
+		bit_shift -= 4;
+
+		DLOG(cout << "For upper-left triangle:" << endl;)
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		// Clear upper triangle
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[4], htable[8], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[2], htable[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(htable[2], htable[4], subbytes);
+		}
+
+		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+		word = bit_row[0] >> bit_shift;
+		bit_row -= bitstride;
+		if (word & 8) {
+			memxor(htable[1], htable[8], subbytes);
+		}
+		if (word & 4) {
+			memxor(htable[1], htable[4], subbytes);
+		}
+		if (word & 2) {
+			memxor(htable[1], htable[2], subbytes);
+		}
+
+		// Generate table
+		memxor_set(htable[3], htable[1], htable[2], subbytes);
+		memxor_set(htable[6], htable[2], htable[4], subbytes);
+		memxor_set(htable[5], htable[1], htable[4], subbytes);
+		memxor_set(htable[7], htable[1], htable[6], subbytes);
+		memxor_set(htable[9], htable[1], htable[8], subbytes);
+		memxor_set(htable[12], htable[4], htable[8], subbytes);
+		memxor_set(htable[10], htable[2], htable[8], subbytes);
+		memxor_set(htable[11], htable[3], htable[8], subbytes);
+		memxor_set(htable[13], htable[1], htable[12], subbytes);
+		memxor_set(htable[14], htable[2], htable[12], subbytes);
+		memxor_set(htable[15], htable[3], htable[12], subbytes);
+
 
 		// For each other row,
 		u64 *other = row;
@@ -804,7 +920,9 @@ static void win_gaussian_elimination(int rows, Block *recovery[256], u64 *bitmat
 	}
 }
 
-static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
+static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
+								 int bitstride, int subbytes)
+{
 	const int bit_rows = rows * 8;
 
 	u64 mask = 1;
@@ -862,29 +980,9 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 }
 
 // Windowed version of back-substitution
-static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
-	static const int PRECOMP_TABLE_SIZE = 11;
-
-	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
-	u8 *table_stack[16 * 2] = {0};
-	u8 **tables[2] = {
-		table_stack, table_stack + 16
-	};
-
-	// Fill in tables
-	u8 *precomp_ptr = precomp;
-	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
-		u8 **table = tables[ii];
-
-		table[3] = precomp_ptr;
-		table[5] = precomp_ptr + subbytes;
-		table[6] = precomp_ptr + subbytes * 2;
-		table[7] = precomp_ptr + subbytes * 3;
-		for (int jj = 9; jj < 16; ++jj) {
-			table[jj] = precomp_ptr + subbytes * (jj - 5);
-		}
-	}
-
+static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix,
+								  int bitstride, int subbytes, u8 **tables[2])
+{
 	// For each column to generate,
 	for (int x = rows - 1; x >= 3; --x) {
 		Block *block_x = recovery[x];
@@ -1072,7 +1170,9 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 	delete []precomp;
 }
 
-static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
+static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix,
+							  int bitstride, int subbytes)
+{
 	for (int pivot = rows * 8 - 1; pivot > 0; --pivot) {
 		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
 		const u64 *offset = bitmatrix + (pivot >> 6);
@@ -1091,7 +1191,8 @@ static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, in
 	}
 }
 
-extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
+extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
+{
 	// For the special case of one erasure,
 	if (m == 1) {
 		cauchy_decode_m1(k, blocks, block_bytes);
@@ -1131,6 +1232,31 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// near-optimal matrix selection for each value of k, m.
 
 	GFC256Init();
+
+	u8 *precomp = 0;
+	u8 **tables[2];
+
+	if (recovery_count > PRECOMP_TABLE_THRESH) {
+		u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+		u8 *table_stack[16 * 2] = {0};
+		u8 **tables[2] = {
+			table_stack, table_stack + 16
+		};
+
+		// Fill in tables
+		u8 *precomp_ptr = precomp;
+		for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
+			u8 **table = tables[ii];
+
+			table[3] = precomp_ptr;
+			table[5] = precomp_ptr + subbytes;
+			table[6] = precomp_ptr + subbytes * 2;
+			table[7] = precomp_ptr + subbytes * 3;
+			for (int jj = 9; jj < 16; ++jj) {
+				table[jj] = precomp_ptr + subbytes * (jj - 5);
+			}
+		}
+	}
 
 	// Generate Cauchy matrix
 	int stride;
@@ -1208,6 +1334,10 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 		delete []matrix;
 	}
 
+	if (precomp) {
+		delete []precomp;
+	}
+
 	return 0;
 }
 
@@ -1215,7 +1345,9 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 //// Encoder
 
 // Windowed version of encoder
-static void win_encode(int k, int m, const u8 *matrix, int stride, const u8 *data, u8 *out, int subbytes) {
+static void win_encode(int k, int m, const u8 *matrix, int stride,
+					   const u8 *data, u8 *out, int subbytes)
+{
 	static const int PRECOMP_TABLE_SIZE = 11;
 
 	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
@@ -1296,7 +1428,9 @@ static void win_encode(int k, int m, const u8 *matrix, int stride, const u8 *dat
 	delete []precomp;
 }
 
-extern "C" int cauchy_256_encode(int k, int m, const void *vdata, void *vrecovery_blocks, int block_bytes) {
+extern "C" int cauchy_256_encode(int k, int m, const void *vdata,
+								 void *vrecovery_blocks, int block_bytes)
+{
 	const u8 *data = reinterpret_cast<const u8 *>( vdata );
 	u8 *recovery_blocks = reinterpret_cast<u8 *>( vrecovery_blocks );
 
