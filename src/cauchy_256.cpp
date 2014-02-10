@@ -585,8 +585,6 @@ static void win_original(Block *original[256], int original_count,
 			}
 		}
 	}
-
-	delete []precomp;
 }
 
 static void eliminate_original(Block *original[256], int original_count,
@@ -730,7 +728,8 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 }
 
 static void win_gaussian_elimination(int rows, Block *recovery[256],
-									 u64 *bitmatrix, int bitstride, int subbytes)
+									 u64 *bitmatrix, int bitstride,
+									 int subbytes, u8 **tables[2])
 {
 	const int bit_rows = rows * 8;
 
@@ -1166,8 +1165,6 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 			}
 		}
 	}
-
-	delete []precomp;
 }
 
 static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix,
@@ -1234,14 +1231,14 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	GFC256Init();
 
 	u8 *precomp = 0;
-	u8 **tables[2];
+	u8 **precomp_tables[2];
+	u8 *table_stack[16 * 2] = {0};
 
 	if (recovery_count > PRECOMP_TABLE_THRESH) {
-		u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
-		u8 *table_stack[16 * 2] = {0};
-		u8 **tables[2] = {
-			table_stack, table_stack + 16
-		};
+		precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+
+		precomp_tables[0] = table_stack;
+		precomp_tables[1] = table_stack + 16;
 
 		// Fill in tables
 		u8 *precomp_ptr = precomp;
@@ -1279,8 +1276,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	// If original data exists,
 	if (original_count > 0) {
 		// Eliminate original data from recovery rows
-		if (recovery_count > 4) {
-			win_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes);
+		if (recovery_count > PRECOMP_TABLE_THRESH) {
+			win_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes, precomp_tables);
 		} else {
 			eliminate_original(original, original_count, recovery, recovery_count, matrix, stride, subbytes);
 		}
@@ -1308,8 +1305,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	// immediately found without performing more row additions.
 
 	// Gaussian elimination to put matrix in upper triangular form
-	if (recovery_count > 4) {
-		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	if (recovery_count > PRECOMP_TABLE_THRESH) {
+		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 	} else {
 		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
 	}
@@ -1321,8 +1318,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	// itself is not adjusted since the important result is the output values.
 
 	// Use back-substitution to solve value for each column
-	if (recovery_count > 4) {
-		win_back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	if (recovery_count > PRECOMP_TABLE_THRESH) {
+		win_back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 	} else {
 		back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes);
 	}
