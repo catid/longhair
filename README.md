@@ -17,6 +17,14 @@ The erasure code is parameterized by three values (`k`, `m`, `bytes`).  These ar
 These erasure codes are not patent-encumbered and the software is provided royalty-free.
 
 
+##### Building: Quick Setup
+
+The [longhair-mobile](https://github.com/catid/longhair/tree/master/longhair-mobile)
+directory contains an easy-to-import set of C code that also
+builds properly for mobile devices.  In a pinch you can use this code for
+desktops too.
+
+
 ## Usage
 
 Documentation is provided in the header file [cauchy_256.h](https://github.com/catid/longhair/raw/master/include/cauchy_256.h).

@@ -52,6 +52,11 @@ test : release $(test_o)
 	$(CCPP) $(test_o) -L./bin -llonghair -o test
 	./test
 
+test-mobile : CFLAGS += -DUNIT_TEST $(OPTFLAGS)
+test-mobile : release $(test_o)
+	$(CCPP) $(test_o) -L./longhair-mobile -llonghair -o test
+	./test
+
 
 # LibCat objects
 
