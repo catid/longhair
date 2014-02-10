@@ -54,7 +54,7 @@
  * 1 < m < 32.
  *
  * These codes have been thoroughly explored by Dr. James Plank over the past
- * ~15 years [1].  In this time there has not been a lot of work on improving
+ * ~10 years [1].  In this time there has not been a lot of work on improving
  * Jerasure [2] to speed up CRS codes for small datasets.
  *
  * For example, all of the existing work on Jerasure is in reference to disk or
@@ -64,17 +64,17 @@
  *
  * Jerasure is designed to be generic, so it has best matrices for m = 2 for
  * all of the values of w that may be of interest.  But it does not attempt to
- * optimize for m > 2, which is a huge optimization that is helpful for packet
- * error correction use cases.
+ * optimize for m > 2, which is a huge missed opportunity for better speed for
+ * packet error correction.
  *
  * Jerasure only tries one generator polynomial for GF(256) instead of
  * exploring all 16 of the possible generators to find minimal Cauchy matrices.
- * 6% improvement is possible!
+ * 6% improvement was possible.
  *
  * Jerasure uses a "matrix improvement" formula to quickly derive an optimal
- * Cauchy matrix modified to reduce the number of ones.  I came up with a
- * better approach that has roughly 30% fewer ones in the resulting matrix,
- * while also initializing faster.
+ * Cauchy matrix modified to reduce the number of ones.  I came up with a new
+ * approach that initializes much faster while yielding roughly 30% fewer ones
+ * in the resulting matrix, in trade for a 30KB precomputed table.
  *
  * It may be possible to speed up the codec using other values of w, but a
  * generic implementation that uses w = 7 will not run faster than a
@@ -101,19 +101,18 @@
  *	0...
  *	1...
  *
- * where each column is the previous column times 2.
+ * where each column is the previous column multiplied by 2.
  *
- * This requires bit operations to separate out each of the bits into
+ * This requires expensive bit operations to separate out each of the bits into
  * each of the rows.
  *
  * However, the transpose of these submatrices is also invertible.
  *
- * A hand-wavy proof is that you can swap the X[] and Y[] values that
- * generate the Cauchy matrix and it is still invertible, so taking
- * the transpose of each element should be okay.  To be honest at
- * first I just guessed it might work, and it turned out I was right.
+ * A hand-wavy proof is that you can swap the X[] and Y[] values that generate
+ * the Cauchy matrix and it is still invertible, so taking the transpose of
+ * each element should be okay.  This was experimentally verified.
  *
- * So the code slices up the GF(256) elements like this:
+ * So this code slices up the GF(256) elements like this:
  *
  * 1001
  * ....
@@ -126,7 +125,7 @@
  */
 
 /*
- * Tremendous improvement of 3x performance on Jerasure's encoder:
+ * Up to 300% performance increase using windowing:
  *
  * The encoder has a very difficult task of generating all of the recovery
  * symbols.  The decoder often does not need any of them, so the performance
@@ -143,6 +142,47 @@
  * Since this is an MDS code, the number of repeats for 4 bits should be
  * roughly 8 * m / 16 = m / 2.  So as m increases, it makes increasing sense
  * to precalculate combinations of the input data and work on sets of bits.
+ *
+ * For a concrete example:
+ *
+ * 	1000 -> "G"
+ * 	0100 -> "L"
+ * 	0010 -> "A"
+ * 	0001 -> "D"
+ *	1101 = "G" + "L" + "D"
+ *	0101 = "L" + "D"
+ *	1110 = "G" + "L" + "A"
+ *	1011 = "G" + "A" + "D"
+ *
+ * The upper identity matrix maps to the original data.  This implicitly exists
+ * in the code and does not need to be actually constructed.  This would be a
+ * k = 4 case.  The final 4 rows are the redundant blocks and so m = 4.  In
+ * this simple example, w = 1.  Note that the redundant symbols are linear
+ * combinations of the top 4.
+ *
+ * Applying windows to the construction of the redundant blocks can be done as
+ * follows:
+ *
+ *	T[00] = (don't care)
+ *	T[10] = "L"
+ *	T[01] = "A"
+ *	T[11] = "L" + "A"
+ *
+ * And the first two columns of bits for the bottom four rows becomes:
+ *
+ *	(11)
+ *	(01)
+ *	(11)
+ *	(10)
+ *
+ * Instead of calculating "L" + "A" twice, it can just be looked up from the
+ * table.  Now imagine a larger table and many more rows.  For this library,
+ * m = 4 means 32 binary rows, so the advantage of windowing becomes apparent.
+ * The number of memory accesses is decreased dramatically.
+ *
+ * This library uses two 4-bit lookup tables because the bitmatrix is a
+ * multiple of w=8 bits in width.  This also allows for avoiding storing the
+ * bitmatrix in memory - All the work can be done in registers.
  *
  * This 4-bit window technique starts being useful in practice at m = 5, and
  * improves the encoder speed by up to 300%.
