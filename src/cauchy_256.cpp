@@ -732,6 +732,78 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 	return bitmatrix;
 }
 
+static void win_gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
+	static const int PRECOMP_TABLE_SIZE = 11;
+
+	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+	u8 *table_stack[16 * 2] = {0};
+	u8 **tables[2] = {
+		table_stack, table_stack + 16
+	};
+
+	const int bit_rows = rows * 8;
+
+	u64 mask = 1;
+
+	// For each pivot to find,
+	u64 *base = bitmatrix;
+	for (int pivot = 0; pivot < bit_rows - 1;) {
+		int pivot_word = pivot >> 6;
+		u64 *offset = base + pivot_word;
+		u64 *row = offset;
+
+		// For each set of 8 columns,
+		for (int ii = 0; ii < 8; ++ii, mask = CAT_ROL64(mask, 1), ++pivot, base += bitstride) {
+			// For each option,
+			for (int option = pivot; option < bit_rows; ++option, row += bitstride) {
+				// If bit in this row is set,
+				if (row[0] & mask) {
+					// Prepare to add in data
+					u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+					DLOG(cout << "Found pivot " << pivot << endl;)
+					DLOG(print_matrix(bitmatrix, bitstride, bit_rows);)
+
+					// If the rows were out of order,
+					if (option != pivot) {
+						// Reorder data into the right place
+						u8 *data = recovery[option >> 3]->data + (option & 7) * subbytes;
+						memswap(src, data, subbytes);
+
+						// Reorder matrix rows
+						memswap(row, offset, (bitstride - pivot_word) << 3);
+					}
+
+					// Stop here
+					break;
+				}
+			}
+		}
+
+		// TODO: Set up precomputed table
+
+		// For each other row,
+		u64 *other = row;
+		int option = pivot;
+		while (++option < bit_rows) {
+			other += bitstride;
+
+			// If that row also has the bit set,
+			if (other[0] & mask) {
+				DLOG(cout << "Eliminating from row " << option << endl;)
+
+				// For each remaining word,
+				for (int ii = 0; ii < bitstride - (pivot >> 6); ++ii) {
+					other[ii] ^= offset[ii];
+				}
+
+				// Add in the data
+				u8 *dest = recovery[option >> 3]->data + (option & 7) * subbytes;
+				memxor(dest, src, subbytes);
+			}
+		}
+	}
+}
+
 static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
 	const int bit_rows = rows * 8;
 
@@ -789,6 +861,7 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 	}
 }
 
+// Windowed version of back-substitution
 static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix, int bitstride, int subbytes) {
 	static const int PRECOMP_TABLE_SIZE = 11;
 
@@ -1109,7 +1182,11 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes) {
 	// immediately found without performing more row additions.
 
 	// Gaussian elimination to put matrix in upper triangular form
-	gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	if (recovery_count > 4) {
+		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	} else {
+		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+	}
 
 	DLOG(print_matrix(bitmatrix, bitstride, recovery_count * 8);)
 
