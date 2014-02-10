@@ -255,9 +255,6 @@ The rows are values of k (amount of data) and the columns are values of m (numbe
 Darker is better.  The main point of this plot is to just show that k doesn't
 factor into the performance of the code.
 
-Rateless codes run at about 210 MB/s for `k = 29`, so for values of `m` up to 13
-these CRS codes are a better option.
-
 
 #### Credits
 
