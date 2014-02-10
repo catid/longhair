@@ -157,46 +157,49 @@
  * The upper identity matrix maps to the original data.  This implicitly exists
  * in the code and does not need to be actually constructed.  This would be a
  * k = 4 case.  The final 4 rows are the redundant blocks and so m = 4.  In
- * this simple example, w = 1.  Note that the redundant symbols are linear
- * combinations of the top 4.
+ * this simple example, w = 1.  Note that the redundant blocks are linear
+ * combinations of the original blocks.
  *
- * Applying windows to the construction of the redundant blocks can be done as
- * follows:
+ * Choosing a 2-bit window to calculate the redundant blocks results in a table
+ * with 4 entries:
  *
  *	T[00] = (don't care)
- *	T[10] = "L"
- *	T[01] = "A"
- *	T[11] = "L" + "A"
+ *	T[10] = "G"
+ *	T[01] = "L"
+ *	T[11] = "G" + "L" <= only actual precomputation
+ *
+ *	T'[00] = (don't care)
+ *	T'[10] = "A"
+ *	T'[01] = "D"
+ *	T'[11] = "A" + "D" <= only actual precomputation
  *
  * And the first two columns of bits for the bottom four rows becomes:
  *
- *	(11)
- *	(01)
- *	(11)
- *	(10)
+ *	(11) (01) = T[11] + T'[01]
+ *	(01) (01) = T[01] + T'[01]
+ *	(11) (10) = T[11] + T'[10]
+ *	(10) (11) = T[10] + T'[11]
  *
- * Instead of calculating "L" + "A" twice, it can just be looked up from the
+ * Instead of calculating "G" + "L" twice, it can just be looked up from the
  * table.  Now imagine a larger table and many more rows.  For this library,
  * m = 4 means 32 binary rows, so the advantage of windowing becomes apparent.
- * The number of memory accesses is decreased dramatically.
+ * The number of memory accesses is decreased dramatically.  Since the speed
+ * of the code drops significantly as m increases, this optimization attacks
+ * the problem directly.
  *
  * This library uses two 4-bit lookup tables because the bitmatrix is a
  * multiple of w=8 bits in width.  This also allows for avoiding storing the
  * bitmatrix in memory - All the work can be done in registers.
- *
  * This 4-bit window technique starts being useful in practice at m = 5, and
  * improves the encoder speed by up to 300%.
  *
- * This window technique is also used in the decoder to greatly improve speed.
- *
  * Jerasure does attempt to do some row-reuse, but it tries to reuse the
  * *entire* bitmatrix row in its "smart schedule" mode.  This has very limited
- * performance impact and actually hurts performance in most of my test cases.
- *
- * I also avoid generating the bitmatrix and an encoding "schedule" at all in
- * the encoder and just work out of registers where possible for speed.
+ * performance impact and actually hurts performance in most of my tests.
  *
  * Windowed bitmatrix multiplication is implemented in win_encode().
+ * A variation of this window technique is also used in the decoder for speed;
+ * it is done on triangular matrices during Gaussian elimination.
  */
 
 //#define CAT_CAUCHY_LOG
