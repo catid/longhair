@@ -860,7 +860,7 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 
 		u8 *data = block_x->data;
 
-		u64 *bit_row = bitmatrix + bitstride * (x * 8 + 1);
+		u64 *bit_row = bitmatrix + bitstride * (x * 8 + 1) + (x / 8);
 		int bit_shift = (x % 8) * 8;
 
 		// For each of the two 4-bit windows,
