@@ -220,9 +220,10 @@ using namespace std;
 #include "MemSwap.hpp"
 using namespace cat;
 
-// Constants for precomputed tables
-static const int PRECOMP_TABLE_THRESH = 4;
-static const int PRECOMP_TABLE_SIZE = 11;
+// Constants for precomputed table for window method
+static const int PRECOMP_TABLE_SIZE = 11; // Number of non-zero elements
+static const int PRECOMP_TABLE_THRESH = 4; // Min recovery rows to use window
+// NOTE: Some of the code assumes that threshold is at least 3.
 
 #ifdef CAT_CAUCHY_LOG
 
@@ -787,13 +788,14 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 									 int subbytes, u8 **tables[2])
 {
 	const int bit_rows = rows * 8;
-
 	u64 mask = 1;
+	u64 *base = bitmatrix;
 
-	// First find all the pivots, masking the low bits:
+	// First find all the pivots.  This is similar to the unwindowed version,
+	// except that the bitmatrix low bits are not cleared, and the data is not
+	// XOR'd together:
 
 	// For each pivot to find,
-	u64 *base = bitmatrix;
 	for (int pivot = 0; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
 		int pivot_word = pivot >> 6;
 		u64 *offset = base + pivot_word;
@@ -842,42 +844,24 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 		}
 	}
 
-	// Perform XOR operations on data:
-
-	// Clear remaining 3 columns
-	for (int pivot = 1; pivot < 3 * 8; ++pivot) {
-		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
-		const u64 *offset = bitmatrix + (pivot >> 6);
-		const u64 mask = (u64)1 << (pivot & 63);
-
-		DLOG(cout << "BS pivot " << pivot << endl;)
-
-		for (int other_row = pivot - 1; other_row >= 0; --other_row) {
-			if (offset[bitstride * other_row] & mask) {
-				DLOG(cout << "+ Backsub to row " << other_row << endl;)
-				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
-
-				memxor(dest, src, subbytes);
-			}
-		}
-	}
+	// Use window method to XOR the bulk of the data:
 
 	// Name tables
-	u8 **lo_table = tables[1];
-	u8 **hi_table = tables[0];
+	u8 **lo_table = tables[0];
+	u8 **hi_table = tables[1];
 
 	// For each column to generate,
-	for (int x = rows - 1; x >= 3; --x) {
+	for (int x = 0; x < rows - 3; ++x) {
 		Block *block_x = recovery[x];
 
 		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
 
-		DLOG(cout << "win_back_sub: " << x << endl;)
+		DLOG(cout << "win_gaussian_elimination: " << x << endl;)
 
-		u8 *data = block_x->data + subbytes * 4;
+		u8 *data = block_x->data;
 
-		u64 *bit_row = bitmatrix + bitstride * ((x + 1) * 8 - 2) + (x / 8);
-		int bit_shift = (x % 8) * 8 + 4;
+		u64 *bit_row = bitmatrix + bitstride * (x * 8 + 1);
+		int bit_shift = (x % 8) * 8;
 
 		// For each of the two 4-bit windows,
 		for (int table_index = 0; table_index < 2; ++table_index) {
@@ -892,23 +876,23 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 			// On second loop,
 			if (table_index == 1) {
 				// Clear the upper right square
-				for (int ii = 8; ii > 0; ii >>= 1) {
+				for (int ii = 1; ii <= 8; ii <<= 1) {
 					int w = (u8)(bit_row[0] >> bit_shift) & 15;
-					bit_row -= bitstride;
+					bit_row += bitstride;
 
 					DLOG(cout << "For upper-right square at " << ii << " : ";)
 					DLOG(print_word(w, 4);)
 
 					if (w) {
-						memxor(lo_table[ii], hi_table[w], subbytes);
+						memxor(hi_table[ii], lo_table[w], subbytes);
 					}
 				}
 
 				// Fix some variables for the second loop
-				bit_row += bitstride * 3;
-				bit_shift -= 4;
+				bit_row -= bitstride * 3;
+				bit_shift += 4;
 			} else {
-				data -= subbytes * 4;
+				data += subbytes * 4;
 			}
 
 			DLOG(cout << "For triangle " << table_index << ":" << endl;)
@@ -916,34 +900,34 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 
 			// Clear triangle
 			u64 word = bit_row[0] >> bit_shift;
-			bit_row -= bitstride;
-			if (word & 8) {
-				memxor(table[4], table[8], subbytes);
+			bit_row += bitstride;
+			if (word & 1) {
+				memxor(table[2], table[1], subbytes);
 			}
 
 			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
 
 			word = bit_row[0] >> bit_shift;
-			bit_row -= bitstride;
-			if (word & 8) {
-				memxor(table[2], table[8], subbytes);
-			}
-			if (word & 4) {
-				memxor(table[2], table[4], subbytes);
-			}
-
-			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-			word = bit_row[0] >> bit_shift;
-			bit_row -= bitstride;
-			if (word & 8) {
-				memxor(table[1], table[8], subbytes);
-			}
-			if (word & 4) {
-				memxor(table[1], table[4], subbytes);
+			bit_row += bitstride;
+			if (word & 1) {
+				memxor(table[4], table[1], subbytes);
 			}
 			if (word & 2) {
-				memxor(table[1], table[2], subbytes);
+				memxor(table[4], table[2], subbytes);
+			}
+
+			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+			word = bit_row[0] >> bit_shift;
+			bit_row += bitstride;
+			if (word & 1) {
+				memxor(table[8], table[1], subbytes);
+			}
+			if (word & 2) {
+				memxor(table[8], table[2], subbytes);
+			}
+			if (word & 4) {
+				memxor(table[8], table[4], subbytes);
 			}
 
 			// Generate table
@@ -960,15 +944,18 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 			memxor_set(table[15], table[3], table[12], subbytes);
 		} // next 4-bit window
 
+		// Fix bit shift back to the start of the window
+		bit_shift -= 4;
+
 		// For each of the rows,
-		for (int y = x - 1; y >= 0; --y) {
+		for (int y = x + 1; y < rows; ++y) {
 			Block *block_y = recovery[y];
 
-			u8 *dest = block_y->data + 7 * subbytes;
+			u8 *dest = block_y->data;
 
 			DLOG(cout << "For row " << y << " at " << (u64)dest << endl;)
 
-			for (int jj = 0; jj < 8; ++jj, bit_row -= bitstride, dest -= subbytes) {
+			for (int jj = 0; jj < 8; ++jj, bit_row += bitstride, dest += subbytes) {
 				u8 slice = (u8)(bit_row[0] >> bit_shift);
 				int low = slice & 15;
 				int high = slice >> 4;
@@ -987,17 +974,34 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 			}
 		}
 	}
+
+	// Clear final 3 columns
+	for (int pivot = bit_rows - 3 * 8; pivot < bit_rows - 1; ++pivot) {
+		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+		const u64 *offset = bitmatrix + (pivot >> 6);
+		const u64 mask = (u64)1 << (pivot & 63);
+
+		DLOG(cout << "GE pivot " << pivot << endl;)
+
+		for (int other_row = pivot + 1; other_row < bit_rows; ++other_row) {
+			if (offset[bitstride * other_row] & mask) {
+				DLOG(cout << "+ Foresub to row " << other_row << endl;)
+				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
+
+				memxor(dest, src, subbytes);
+			}
+		}
+	}
 }
 
 static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 								 int bitstride, int subbytes)
 {
 	const int bit_rows = rows * 8;
-
 	u64 mask = 1;
+	u64 *base = bitmatrix;
 
 	// For each pivot to find,
-	u64 *base = bitmatrix;
 	for (int pivot = 0; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
 		int pivot_word = pivot >> 6;
 		u64 *offset = base + pivot_word;
@@ -1344,8 +1348,7 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 	// Gaussian elimination to put matrix in upper triangular form
 	if (recovery_count > PRECOMP_TABLE_THRESH) {
-		//win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
-		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 
 		// The matrix is now in an upper-triangular form, and can be worked from
 		// right to left to conceptually produce an identity matrix.  The matrix
