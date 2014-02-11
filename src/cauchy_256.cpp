@@ -797,7 +797,7 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 
 	// For each pivot to find,
 	for (int pivot = 0; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
-		int pivot_word = pivot >> 6;
+		const int pivot_word = pivot >> 6;
 		u64 *offset = base + pivot_word;
 		u64 *row = offset;
 
@@ -832,7 +832,7 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 						other[0] ^= offset[0] & (~(mask - 1) ^ mask);
 
 						// For each remaining word,
-						for (int ii = 1; ii < bitstride - (pivot >> 6); ++ii) {
+						for (int ii = 1; ii < bitstride - pivot_word; ++ii) {
 							other[ii] ^= offset[ii];
 						}
 					}
@@ -1006,7 +1006,7 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 
 	// For each pivot to find,
 	for (int pivot = 0; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
-		int pivot_word = pivot >> 6;
+		const int pivot_word = pivot >> 6;
 		u64 *offset = base + pivot_word;
 		u64 *row = offset;
 
@@ -1041,7 +1041,7 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 						other[0] ^= offset[0];
 
 						// For each remaining word,
-						for (int ii = 1; ii < bitstride - (pivot >> 6); ++ii) {
+						for (int ii = 1; ii < bitstride - pivot_word; ++ii) {
 							other[ii] ^= offset[ii];
 						}
 
@@ -1355,8 +1355,7 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 	// Gaussian elimination to put matrix in upper triangular form
 	if (recovery_count > PRECOMP_TABLE_THRESH) {
-		//win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
-		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
+		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 
 		// The matrix is now in an upper-triangular form, and can be worked from
 		// right to left to conceptually produce an identity matrix.  The matrix
