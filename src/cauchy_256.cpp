@@ -975,16 +975,19 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 		}
 	}
 
+	int pivot = bit_rows - 3 * 8;
+	mask = (u64)1 << (pivot & 63);
+	base = bitmatrix + ((pivot + 1) * bitstride);
+
 	// Clear final 3 columns
-	for (int pivot = bit_rows - 3 * 8; pivot < bit_rows - 1; ++pivot) {
+	for (; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
 		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
-		const u64 *offset = bitmatrix + (pivot >> 6);
-		const u64 mask = (u64)1 << (pivot & 63);
+		const u64 *bit_row = base + (pivot >> 6);
 
 		DLOG(cout << "GE pivot " << pivot << endl;)
 
-		for (int other_row = pivot + 1; other_row < bit_rows; ++other_row) {
-			if (offset[bitstride * other_row] & mask) {
+		for (int other_row = pivot + 1; other_row < bit_rows; ++other_row, bit_row += bitstride) {
+			if (bit_row[0] & mask) {
 				DLOG(cout << "+ Foresub to row " << other_row << endl;)
 				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
 
@@ -1185,18 +1188,22 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 		}
 	}
 
+	int pivot = 3 * 8 - 1;
+	u64 mask = (u64)1 << (pivot & 63);
+	const u64 *base = bitmatrix + ((pivot - 1) * bitstride);
+
 	// Clear remaining 3 columns
-	for (int pivot = 3 * 8 - 1; pivot > 0; --pivot) {
+	for (; pivot > 0; --pivot, mask = CAT_ROR64(mask, 1), base -= bitstride) {
 		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
-		const u64 *offset = bitmatrix + (pivot >> 6);
-		const u64 mask = (u64)1 << (pivot & 63);
+		const u64 *bit_row = base + (pivot >> 6);
 
 		DLOG(cout << "BS pivot " << pivot << endl;)
 
-		for (int other_row = pivot - 1; other_row >= 0; --other_row) {
-			if (offset[bitstride * other_row] & mask) {
-				DLOG(cout << "+ Backsub to row " << other_row << endl;)
+		for (int other_row = pivot - 1; other_row >= 0; --other_row, bit_row -= bitstride) {
+			if (bit_row[0] & mask) {
 				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
+
+				DLOG(cout << "+ Backsub to row " << other_row << endl;)
 
 				memxor(dest, src, subbytes);
 			}
@@ -1348,7 +1355,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 	// Gaussian elimination to put matrix in upper triangular form
 	if (recovery_count > PRECOMP_TABLE_THRESH) {
-		win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
+		//win_gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
+		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
 
 		// The matrix is now in an upper-triangular form, and can be worked from
 		// right to left to conceptually produce an identity matrix.  The matrix
@@ -1360,7 +1368,6 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 		win_back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 	} else {
 		// Non-windowed version:
-
 		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
 
 		DLOG(print_matrix(bitmatrix, bitstride, recovery_count * 8);)
