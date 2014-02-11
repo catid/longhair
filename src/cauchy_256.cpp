@@ -769,7 +769,19 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 
 	return bitmatrix;
 }
+
 /*
+ * This version of GE is complicated by performing the operations in two steps:
+ *
+ * 1) The first round of operations finds the pivots,
+ * 2) and the second round runs the data XOR operations.
+ *
+ * The data XOR operations are selected by the bits left behind while choosing
+ * the pivots, so the rows that get XOR'd together need to be masked to avoid
+ * clearing the low bits.
+ */
+
+// Windowed version of Gaussian elimination
 static void win_gaussian_elimination(int rows, Block *recovery[256],
 									 u64 *bitmatrix, int bitstride,
 									 int subbytes, u8 **tables[2])
@@ -778,190 +790,205 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 
 	u64 mask = 1;
 
+	// First find all the pivots, masking the low bits:
+
 	// For each pivot to find,
 	u64 *base = bitmatrix;
-	for (int pivot = 0; pivot < bit_rows - 1;) {
+	for (int pivot = 0; pivot < bit_rows - 1; ++pivot, mask = CAT_ROL64(mask, 1), base += bitstride) {
 		int pivot_word = pivot >> 6;
 		u64 *offset = base + pivot_word;
 		u64 *row = offset;
 
-		// For each set of 8 columns,
-		for (int ii = 0; ii < 8; ++ii, mask = CAT_ROL64(mask, 1), ++pivot, base += bitstride) {
-			// For each option,
-			for (int option = pivot; option < bit_rows; ++option, row += bitstride) {
-				// If bit in this row is set,
-				if (row[0] & mask) {
-					// Prepare to add in data
-					u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
-					DLOG(cout << "Found pivot " << pivot << endl;)
-					DLOG(print_matrix(bitmatrix, bitstride, bit_rows);)
+		// For each option,
+		for (int option = pivot; option < bit_rows; ++option, row += bitstride) {
+			// If bit in this row is set,
+			if (row[0] & mask) {
+				// Prepare to add in data
+				u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+				DLOG(cout << "Found pivot " << pivot << endl;)
+				DLOG(print_matrix(bitmatrix, bitstride, bit_rows);)
 
-					// If the rows were out of order,
-					if (option != pivot) {
-						// Reorder data into the right place
-						u8 *data = recovery[option >> 3]->data + (option & 7) * subbytes;
-						memswap(src, data, subbytes);
+				// If the rows were out of order,
+				if (option != pivot) {
+					// Reorder data into the right place
+					u8 *data = recovery[option >> 3]->data + (option & 7) * subbytes;
+					memswap(src, data, subbytes);
 
-						// Reorder matrix rows
-						memswap(row, offset, (bitstride - pivot_word) << 3);
+					// Reorder matrix rows
+					memswap(row, offset, (bitstride - pivot_word) << 3);
+				}
+
+				// For each other row,
+				u64 *other = row;
+				while (++option < bit_rows) {
+					other += bitstride;
+
+					// If that row also has the bit set,
+					if (other[0] & mask) {
+						DLOG(cout << "Eliminating from row " << option << endl;)
+
+						other[0] ^= offset[0] & (~(mask - 1) ^ mask);
+
+						// For each remaining word,
+						for (int ii = 1; ii < bitstride - (pivot >> 6); ++ii) {
+							other[ii] ^= offset[ii];
+						}
 					}
-
-					// Stop here
-					break;
-				}
-			}
-		}
-
-		// Fill in tables
-		u8 **table = tables[0];
-		table[1] = (u8 *)data;
-		table[2] = (u8 *)data + subbytes;
-		table[4] = (u8 *)data + subbytes * 2;
-		table[8] = (u8 *)data + subbytes * 3;
-
-		DLOG(cout << "For lower-right triangle:" << endl;)
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		// Clear upper triangle
-		u64 word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(table[4], table[8], subbytes);
-		}
-
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(table[2], table[8], subbytes);
-		}
-		if (word & 4) {
-			memxor(table[2], table[4], subbytes);
-		}
-
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(table[1], table[8], subbytes);
-		}
-		if (word & 4) {
-			memxor(table[1], table[4], subbytes);
-		}
-		if (word & 2) {
-			memxor(table[1], table[2], subbytes);
-		}
-
-		// Generate table
-		memxor_set(table[3], table[1], table[2], subbytes);
-		memxor_set(table[6], table[2], table[4], subbytes);
-		memxor_set(table[5], table[1], table[4], subbytes);
-		memxor_set(table[7], table[1], table[6], subbytes);
-		memxor_set(table[9], table[1], table[8], subbytes);
-		memxor_set(table[12], table[4], table[8], subbytes);
-		memxor_set(table[10], table[2], table[8], subbytes);
-		memxor_set(table[11], table[3], table[8], subbytes);
-		memxor_set(table[13], table[1], table[12], subbytes);
-		memxor_set(table[14], table[2], table[12], subbytes);
-		memxor_set(table[15], table[3], table[12], subbytes);
-
-		data -= subbytes * 4;
-
-		u8 **htable = tables[1];
-		htable[1] = (u8 *)data;
-		htable[2] = (u8 *)data + subbytes;
-		htable[4] = (u8 *)data + subbytes * 2;
-		htable[8] = (u8 *)data + subbytes * 3;
-
-		for (int ii = 8; ii > 0; ii >>= 1) {
-			int w = (u8)(bit_row[0] >> bit_shift) & 15;
-			bit_row -= bitstride;
-
-			DLOG(cout << "For upper-right square at " << ii << " : ";)
-			DLOG(print_word(w, 4);)
-
-			if (w) {
-				memxor(htable[ii], table[w], subbytes);
-			}
-		}
-
-		bit_row += bitstride * 3;
-		bit_shift -= 4;
-
-		DLOG(cout << "For upper-left triangle:" << endl;)
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		// Clear upper triangle
-		word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(htable[4], htable[8], subbytes);
-		}
-
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(htable[2], htable[8], subbytes);
-		}
-		if (word & 4) {
-			memxor(htable[2], htable[4], subbytes);
-		}
-
-		DLOG(print_word(bit_row[0] >> bit_shift, 4);)
-
-		word = bit_row[0] >> bit_shift;
-		bit_row -= bitstride;
-		if (word & 8) {
-			memxor(htable[1], htable[8], subbytes);
-		}
-		if (word & 4) {
-			memxor(htable[1], htable[4], subbytes);
-		}
-		if (word & 2) {
-			memxor(htable[1], htable[2], subbytes);
-		}
-
-		// Generate table
-		memxor_set(htable[3], htable[1], htable[2], subbytes);
-		memxor_set(htable[6], htable[2], htable[4], subbytes);
-		memxor_set(htable[5], htable[1], htable[4], subbytes);
-		memxor_set(htable[7], htable[1], htable[6], subbytes);
-		memxor_set(htable[9], htable[1], htable[8], subbytes);
-		memxor_set(htable[12], htable[4], htable[8], subbytes);
-		memxor_set(htable[10], htable[2], htable[8], subbytes);
-		memxor_set(htable[11], htable[3], htable[8], subbytes);
-		memxor_set(htable[13], htable[1], htable[12], subbytes);
-		memxor_set(htable[14], htable[2], htable[12], subbytes);
-		memxor_set(htable[15], htable[3], htable[12], subbytes);
-
-
-		// For each other row,
-		u64 *other = row;
-		int option = pivot;
-		while (++option < bit_rows) {
-			other += bitstride;
-
-			// If that row also has the bit set,
-			if (other[0] & mask) {
-				DLOG(cout << "Eliminating from row " << option << endl;)
-
-				// For each remaining word,
-				for (int ii = 0; ii < bitstride - (pivot >> 6); ++ii) {
-					other[ii] ^= offset[ii];
 				}
 
-				// Add in the data
-				u8 *dest = recovery[option >> 3]->data + (option & 7) * subbytes;
+				// Stop here
+				break;
+			}
+		}
+	}
+
+	// Perform XOR operations on data:
+
+	// Clear remaining 3 columns
+	for (int pivot = 1; pivot < 3 * 8; ++pivot) {
+		const u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+		const u64 *offset = bitmatrix + (pivot >> 6);
+		const u64 mask = (u64)1 << (pivot & 63);
+
+		DLOG(cout << "BS pivot " << pivot << endl;)
+
+		for (int other_row = pivot - 1; other_row >= 0; --other_row) {
+			if (offset[bitstride * other_row] & mask) {
+				DLOG(cout << "+ Backsub to row " << other_row << endl;)
+				u8 *dest = recovery[other_row >> 3]->data + (other_row & 7) * subbytes;
+
 				memxor(dest, src, subbytes);
 			}
 		}
 	}
+
+	// Name tables
+	u8 **lo_table = tables[1];
+	u8 **hi_table = tables[0];
+
+	// For each column to generate,
+	for (int x = rows - 1; x >= 3; --x) {
+		Block *block_x = recovery[x];
+
+		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
+
+		DLOG(cout << "win_back_sub: " << x << endl;)
+
+		u8 *data = block_x->data + subbytes * 4;
+
+		u64 *bit_row = bitmatrix + bitstride * ((x + 1) * 8 - 2) + (x / 8);
+		int bit_shift = (x % 8) * 8 + 4;
+
+		// For each of the two 4-bit windows,
+		for (int table_index = 0; table_index < 2; ++table_index) {
+			u8 **table = tables[table_index];
+
+			// Fill in lookup table
+			table[1] = (u8 *)data;
+			table[2] = (u8 *)data + subbytes;
+			table[4] = (u8 *)data + subbytes * 2;
+			table[8] = (u8 *)data + subbytes * 3;
+
+			// On second loop,
+			if (table_index == 1) {
+				// Clear the upper right square
+				for (int ii = 8; ii > 0; ii >>= 1) {
+					int w = (u8)(bit_row[0] >> bit_shift) & 15;
+					bit_row -= bitstride;
+
+					DLOG(cout << "For upper-right square at " << ii << " : ";)
+					DLOG(print_word(w, 4);)
+
+					if (w) {
+						memxor(lo_table[ii], hi_table[w], subbytes);
+					}
+				}
+
+				// Fix some variables for the second loop
+				bit_row += bitstride * 3;
+				bit_shift -= 4;
+			} else {
+				data -= subbytes * 4;
+			}
+
+			DLOG(cout << "For triangle " << table_index << ":" << endl;)
+			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+			// Clear triangle
+			u64 word = bit_row[0] >> bit_shift;
+			bit_row -= bitstride;
+			if (word & 8) {
+				memxor(table[4], table[8], subbytes);
+			}
+
+			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+			word = bit_row[0] >> bit_shift;
+			bit_row -= bitstride;
+			if (word & 8) {
+				memxor(table[2], table[8], subbytes);
+			}
+			if (word & 4) {
+				memxor(table[2], table[4], subbytes);
+			}
+
+			DLOG(print_word(bit_row[0] >> bit_shift, 4);)
+
+			word = bit_row[0] >> bit_shift;
+			bit_row -= bitstride;
+			if (word & 8) {
+				memxor(table[1], table[8], subbytes);
+			}
+			if (word & 4) {
+				memxor(table[1], table[4], subbytes);
+			}
+			if (word & 2) {
+				memxor(table[1], table[2], subbytes);
+			}
+
+			// Generate table
+			memxor_set(table[3], table[1], table[2], subbytes);
+			memxor_set(table[6], table[2], table[4], subbytes);
+			memxor_set(table[5], table[1], table[4], subbytes);
+			memxor_set(table[7], table[1], table[6], subbytes);
+			memxor_set(table[9], table[1], table[8], subbytes);
+			memxor_set(table[12], table[4], table[8], subbytes);
+			memxor_set(table[10], table[2], table[8], subbytes);
+			memxor_set(table[11], table[3], table[8], subbytes);
+			memxor_set(table[13], table[1], table[12], subbytes);
+			memxor_set(table[14], table[2], table[12], subbytes);
+			memxor_set(table[15], table[3], table[12], subbytes);
+		} // next 4-bit window
+
+		// For each of the rows,
+		for (int y = x - 1; y >= 0; --y) {
+			Block *block_y = recovery[y];
+
+			u8 *dest = block_y->data + 7 * subbytes;
+
+			DLOG(cout << "For row " << y << " at " << (u64)dest << endl;)
+
+			for (int jj = 0; jj < 8; ++jj, bit_row -= bitstride, dest -= subbytes) {
+				u8 slice = (u8)(bit_row[0] >> bit_shift);
+				int low = slice & 15;
+				int high = slice >> 4;
+
+				DLOG(cout << "Applying slice: ";)
+				DLOG(print_word(slice, 8);)
+
+				// Add
+				if (low && high) {
+					memxor_add(dest, lo_table[low], hi_table[high], subbytes);
+				} else if (low) {
+					memxor(dest, lo_table[low], subbytes);
+				} else {
+					memxor(dest, hi_table[high], subbytes);
+				}
+			}
+		}
+	}
 }
-*/
+
 static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 								 int bitstride, int subbytes)
 {
@@ -1003,8 +1030,11 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 					// If that row also has the bit set,
 					if (other[0] & mask) {
 						DLOG(cout << "Eliminating from row " << option << endl;)
+
+						other[0] ^= offset[0];
+
 						// For each remaining word,
-						for (int ii = 0; ii < bitstride - (pivot >> 6); ++ii) {
+						for (int ii = 1; ii < bitstride - (pivot >> 6); ++ii) {
 							other[ii] ^= offset[ii];
 						}
 
@@ -1326,6 +1356,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 		// Use back-substitution to solve value for each column
 		win_back_substitution(recovery_count, recovery, bitmatrix, bitstride, subbytes, precomp_tables);
 	} else {
+		// Non-windowed version:
+
 		gaussian_elimination(recovery_count, recovery, bitmatrix, bitstride, subbytes);
 
 		DLOG(print_matrix(bitmatrix, bitstride, recovery_count * 8);)
