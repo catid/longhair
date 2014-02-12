@@ -569,7 +569,6 @@ static void win_original(Block *original[256], int original_count,
 		// Fill in tables
 		for (int ii = 0; ii < 2; ++ii, data += subbytes * 4) {
 			u8 **table = tables[ii];
-
 			table[1] = (u8 *)data;
 			table[2] = (u8 *)data + subbytes;
 			table[4] = (u8 *)data + subbytes * 2;
@@ -707,19 +706,22 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 		if (recovery_row == 0) {
 			// Write 8x8 identity submatrix pattern across each bit row
 			u64 pattern = 0x0101010101010101ULL;
+
 			for (int ii = 0; ii < 8; ++ii, pattern <<= 1, bitrow += bitstride) {
 				for (int x = 0; x < bitstride; ++x) {
 					bitrow[x] = pattern;
 				}
 			}
 		} else {
-			DLOG(cout << "For recovery row " << recovery_row << endl;)
-			// Otherwise read the elements of the matrix
 			const u8 *row = matrix + (recovery_row - 1) * stride;
-
-			// Generate eight 64-bit columns of the bitmatrix at a time
 			int remaining = recovery_count;
 			const u8 *erasure = erasures;
+
+			// Otherwise read the elements of the matrix:
+
+			DLOG(cout << "For recovery row " << recovery_row << endl;)
+
+			// Generate eight 64-bit columns of the bitmatrix at a time
 			while (remaining > 0) {
 				// Take up to 8 columns at a time
 				int limit = remaining;
@@ -728,9 +730,8 @@ static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
 				}
 				remaining -= limit;
 
-				u64 w[8];
-
 				// Unroll first loop
+				u64 w[8];
 				u8 slice = row[*erasure++];
 				w[0] = (u64)slice;
 
@@ -805,8 +806,8 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 		for (int option = pivot; option < bit_rows; ++option, row += bitstride) {
 			// If bit in this row is set,
 			if (row[0] & mask) {
-				// Prepare to add in data
 				u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+
 				DLOG(cout << "Found pivot " << pivot << endl;)
 				DLOG(print_matrix(bitmatrix, bitstride, bit_rows);)
 
@@ -820,8 +821,9 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 					memswap(row - pivot_word, base, bitstride << 3);
 				}
 
-				// For each other row,
 				u64 *other = row;
+
+				// For each other row,
 				while (++option < bit_rows) {
 					other += bitstride;
 
@@ -1011,14 +1013,16 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 			// If bit in this row is set,
 			if (row[0] & mask) {
 				// Prepare to add in data
-				u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
 				DLOG(cout << "Found pivot " << pivot << endl;)
 				DLOG(print_matrix(bitmatrix, bitstride, bit_rows);)
 
+				u8 *src = recovery[pivot >> 3]->data + (pivot & 7) * subbytes;
+
 				// If the rows were out of order,
 				if (option != pivot) {
-					// Reorder data into the right place
 					u8 *data = recovery[option >> 3]->data + (option & 7) * subbytes;
+
+					// Reorder data into the right place
 					memswap(src, data, subbytes);
 
 					// Reorder matrix rows
@@ -1043,6 +1047,7 @@ static void gaussian_elimination(int rows, Block *recovery[256], u64 *bitmatrix,
 
 						// Add in the data
 						u8 *dest = recovery[option >> 3]->data + (option & 7) * subbytes;
+
 						memxor(dest, src, subbytes);
 					}
 				}
@@ -1065,21 +1070,17 @@ static void win_back_substitution(int rows, Block *recovery[256], u64 *bitmatrix
 	// For each column to generate,
 	for (int x = rows - 1; x >= 3; --x) {
 		Block *block_x = recovery[x];
-
-		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
-
-		DLOG(cout << "win_back_sub: " << x << endl;)
-
 		u8 *data = block_x->data + subbytes * 4;
-
 		u64 *bit_row = bitmatrix + bitstride * ((x + 1) * 8 - 2) + (x / 8);
 		int bit_shift = (x % 8) * 8 + 4;
 
+		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
+		DLOG(cout << "win_back_sub: " << x << endl;)
+
 		// For each of the two 4-bit windows,
 		for (int table_index = 0; table_index < 2; ++table_index) {
-			u8 **table = tables[table_index];
-
 			// Fill in lookup table
+			u8 **table = tables[table_index];
 			table[1] = (u8 *)data;
 			table[2] = (u8 *)data + subbytes;
 			table[4] = (u8 *)data + subbytes * 2;
@@ -1401,7 +1402,6 @@ static void win_encode(int k, int m, const u8 *matrix, int stride,
 	u8 *precomp_ptr = precomp;
 	for (int ii = 0; ii < 2; ++ii, precomp_ptr += subbytes * PRECOMP_TABLE_SIZE) {
 		u8 **table = tables[ii];
-
 		table[3] = precomp_ptr;
 		table[5] = precomp_ptr + subbytes;
 		table[6] = precomp_ptr + subbytes * 2;
@@ -1483,6 +1483,7 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata,
 		// XOR all input blocks together
 		memxor_set(recovery_blocks, data, data + block_bytes, block_bytes);
 		const u8 *in = data + block_bytes;
+
 		for (int x = 2; x < k; ++x) {
 			in += block_bytes;
 			memxor(recovery_blocks, in, block_bytes);
@@ -1525,21 +1526,24 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata,
 		// Start using a windowed approach to encoding
 		win_encode(k, m, matrix, stride, data, out, subbytes);
 	} else {
-		// For each remaining row to generate,
 		const u8 *row = matrix;
+
+		// For each remaining row to generate,
 		for (int y = 1; y < m; ++y, row += stride, out += block_bytes) {
 			const u8 *src = data;
+			const u8 *column = row;
 
 			// For each symbol column,
-			const u8 *column = row;
 			for (int x = 0; x < k; ++x, ++column, src += block_bytes) {
 				u8 slice = column[0];
-				DLOG(cout << "ENCODE: Using " << (int)slice << " at " << x << ", " << y << endl;)
 				u8 *dest = out;
+
+				DLOG(cout << "ENCODE: Using " << (int)slice << " at " << x << ", " << y << endl;)
 
 				// Generate 8x8 submatrix and XOR in bits as needed
 				for (int bit_y = 0;; ++bit_y) {
 					const u8 *src_x = src;
+
 					for (int bit_x = 0; bit_x < 8; ++bit_x, src_x += subbytes) {
 						if (slice & (1 << bit_x)) {
 							memxor(dest, src_x, subbytes);
