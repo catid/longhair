@@ -817,7 +817,7 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 					memswap(src, data, subbytes);
 
 					// Reorder matrix rows
-					memswap(row, offset, (bitstride - pivot_word) << 3);
+					memswap(row - pivot_word, base, bitstride << 3);
 				}
 
 				// For each other row,
@@ -853,8 +853,8 @@ static void win_gaussian_elimination(int rows, Block *recovery[256],
 	// For each column to generate,
 	for (int x = 0; x < rows - 3; ++x) {
 		Block *block_x = recovery[x];
-		u8 *data = block_x->data;
-		u64 *bit_row = bitmatrix + bitstride * (x * 8 + 1) + (x / 8);
+		const u8 *data = block_x->data;
+		const u64 *bit_row = bitmatrix + bitstride * (x * 8 + 1) + (x / 8);
 		int bit_shift = (x % 8) * 8;
 
 		DLOG(print_matrix(bitmatrix, bitstride, rows * 8);)
