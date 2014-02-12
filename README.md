@@ -264,8 +264,6 @@ find it useful and would like to buy me a coffee, consider [tipping](https://www
 
 ## TODO
 
-The decoder needs the same treatment as the encoder for windowed optimization.
-
 Allow for input that is not a multiple of 8 bytes.
 
 Add wrapper around the CRS code to collect data buffers and process when ready.
