@@ -147,14 +147,13 @@ int main() {
 	}
 
 	ofstream file;
-	file.open("heapmap.txt");
+	file.open("docs/heatmap.txt");
 
 	for (int ii = 0; ii < 256; ++ii) {
-		file << ii << ", ";
 		for (int jj = 0; jj < 256; ++jj) {
 			u8 map_value = heat_map[ii * 256 + jj];
 
-			file << (int)map_value << ",";
+			file << (int)map_value << " ";
 		}
 		file << endl;
 	}
