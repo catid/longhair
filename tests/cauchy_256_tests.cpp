@@ -23,7 +23,7 @@ static void print(const void *data, int bytes) {
 }
 
 
-//#define CAT_ENCODE_TIMES_ONLY
+#define CAT_ENCODE_TIMES_ONLY
 #define CAT_WORST_CASE_BENCHMARK
 #define CAT_REASONABLE_RECOVERY_COUNT
 
@@ -33,8 +33,7 @@ static void print(const void *data, int bytes) {
 #include "jerasure/cauchy.h"
 
 int jerasure_encode(int k, int m, const void *data, void *recovery_blocks, int block_bytes) {
-	/*
-	// TODO: Pick the smallest w that works to take advantage of Jerasure's flexibility
+/*	// TODO: Pick the smallest w that works to take advantage of Jerasure's flexibility
 	int w = 1;
 	while ((1 << w) < (k + m)) {
 		w <<= 1;
@@ -51,20 +50,23 @@ int jerasure_encode(int k, int m, const void *data, void *recovery_blocks, int b
 
 	int *bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
 
-	// TODO: Better to not use smart?
-	int **smart = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
-
-	char **inputs = new char *[k];
+	char *inputs[256];
 	const char *input_data = (const char *)data;
 	for (int ii = 0; ii < k; ++ii) {
 		inputs[ii] = (char*)input_data + ii * block_bytes;
 	}
 
-	char **coding = new char *[m];
+	char *coding[256];
 	char *output_data = (char *)recovery_blocks;
 	for (int ii = 0; ii < m; ++ii) {
 		coding[ii] = output_data + ii * block_bytes;
 	}
+
+	jerasure_bitmatrix_encode(k, m, w, bitmatrix, inputs, coding, block_bytes, block_bytes/w);
+	return 0;
+
+	// TODO: Better to not use smart?
+	int **smart = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
 
 	jerasure_schedule_encode(k, m, w, smart, inputs, coding, block_bytes, block_bytes/w);
 
@@ -131,7 +133,7 @@ int main() {
 
 	cout << "Cauchy RS Codec Unit Tester" << endl;
 
-	int block_bytes = 8 * 162; // a multiple of 8
+	int block_bytes = 8 * 160; // a multiple of 8
 
 	cout << "Using " << block_bytes << " bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes" << endl;
 
