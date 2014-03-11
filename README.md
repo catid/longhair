@@ -180,20 +180,6 @@ is more applicable:
 ~~~
 
 
-## Comparisons with Alternatives
-
-This library implements Cauchy Reed-Solomon (CRS) codes as introduced by
-[Jerasure](https://github.com/tsuraan/Jerasure).  This library improves on
-existing CRS codes in a number of novel ways to greatly increase throughput.
-For full details on what has been improved, refer to the source code comments.
-
-There is another alternative way to do erasure codes efficiently called rateless
-codes, where there is no need to specify a value for `m` and you can generate as
-many redundant blocks as needed.  Rateless codes tend to be more efficient for
-high-speed file transfer.  For more information on these types of erasure codes
-see the [Wirehair](https://github.com/catid/wirehair) library.
-
-
 ## Benchmarks
 
 ##### liblonghair.a on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
@@ -241,6 +227,65 @@ For erasure codes the important statistic to watch is the encoder speed, because
 it determines whether or not the transmitter can afford to send the extra data.
 Usually the decoder is not going to be using every redundant data block, so
 the benchmark is actually worst-case figures for the decoder.
+
+
+## Comparisons with Alternatives
+
+This library implements Cauchy Reed-Solomon (CRS) codes as introduced by
+[Jerasure](https://github.com/tsuraan/Jerasure).  This library improves on
+existing CRS codes in a number of novel ways to greatly increase throughput.
+For full details on what has been improved, refer to the source code comments.
+
+Jerasure performance for the packet case can be improved a lot.  Jerasure has
+the best performance when the value of "w" is tuned to be as small as possible,
+whereas it is fixed at w = 8 in Longhair.  For a favorable benchmark, set w = 6
+and k = 29, and recovery block count m = 1-5:
+
+##### liblonghair.a on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
+
+With "smart scheduling": (Does not help for streaming scenario)
+
+~~~
+Using 1488 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
+
+Encoded k=29 data blocks with m=1 recovery blocks in 20 usec : 2157.6 MB/s
+Encoded k=29 data blocks with m=2 recovery blocks in 91 usec : 474.198 MB/s
+Encoded k=29 data blocks with m=3 recovery blocks in 167 usec : 258.395 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 240 usec : 179.8 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 322 usec : 134.012 MB/s
+~~~
+
+Without "smart scheduling" and with "improved coding matrix": (Setup time hurts performance)
+
+~~~
+Encoded k=29 data blocks with m=1 recovery blocks in 9 usec : 4794.67 MB/s
+Encoded k=29 data blocks with m=2 recovery blocks in 53 usec : 814.189 MB/s
+Encoded k=29 data blocks with m=3 recovery blocks in 98 usec : 440.327 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 152 usec : 283.895 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 187 usec : 230.759 MB/s
+~~~
+
+Without "improved coding matrix" and without "smart scheduling": (BEST PERFORMANCE)
+
+~~~
+Encoded k=29 data blocks with m=1 recovery blocks in 30 usec : 1438.4 MB/s
+Encoded k=29 data blocks with m=2 recovery blocks in 52 usec : 829.846 MB/s
+Encoded k=29 data blocks with m=3 recovery blocks in 77 usec : 560.416 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 104 usec : 414.923 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 127 usec : 339.78 MB/s
+Encoded k=29 data blocks with m=6 recovery blocks in 153 usec : 282.039 MB/s
+~~~
+
+Note Jerasure is roughly 3x slower than this library for the streaming use case.
+
+
+##### Rateless codes
+
+There is another alternative way to do erasure codes efficiently called rateless
+codes, where there is no need to specify a value for `m` and you can generate as
+many redundant blocks as needed.  Rateless codes tend to be more efficient for
+high-speed file transfer.  For more information on these types of erasure codes
+see the [Wirehair](https://github.com/catid/wirehair) library.
 
 
 ## Encoder speed discussion

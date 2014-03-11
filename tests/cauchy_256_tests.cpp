@@ -62,9 +62,6 @@ int jerasure_encode(int k, int m, const void *data, void *recovery_blocks, int b
 		coding[ii] = output_data + ii * block_bytes;
 	}
 
-	jerasure_bitmatrix_encode(k, m, w, bitmatrix, inputs, coding, block_bytes, block_bytes/w);
-	return 0;
-
 	// TODO: Better to not use smart?
 	int **smart = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
 
