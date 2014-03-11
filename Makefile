@@ -17,7 +17,8 @@ DBGLIBNAME = bin/liblonghair_debug.a
 
 library_o = cauchy_256.o MemXOR.o MemSwap.o BitMath.o
 
-test_o = cauchy_256_tests.o Clock.o
+jerasure_o = cauchy.o galois.o jerasure.o
+test_o = cauchy_256_tests.o Clock.o $(jerasure_o)
 
 
 # Release target (default)
@@ -77,6 +78,18 @@ MemSwap.o : libcat/MemSwap.cpp
 
 cauchy_256.o : src/cauchy_256.cpp
 	$(CCPP) $(CFLAGS) -c src/cauchy_256.cpp
+
+
+# Jerasure objects
+
+cauchy.o : tests/jerasure/cauchy.c
+	$(CC) $(CFLAGS) -c tests/jerasure/cauchy.c
+
+galois.o : tests/jerasure/galois.c
+	$(CC) $(CFLAGS) -c tests/jerasure/galois.c
+
+jerasure.o : tests/jerasure/jerasure.c
+	$(CC) $(CFLAGS) -c tests/jerasure/jerasure.c
 
 
 # Executable objects

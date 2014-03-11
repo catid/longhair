@@ -27,6 +27,101 @@ static void print(const void *data, int bytes) {
 #define CAT_WORST_CASE_BENCHMARK
 #define CAT_REASONABLE_RECOVERY_COUNT
 
+// Jerasure wrapper for performance comparison:
+
+#include "jerasure/jerasure.h"
+#include "jerasure/cauchy.h"
+
+int jerasure_encode(int k, int m, const void *data, void *recovery_blocks, int block_bytes) {
+	/*
+	// TODO: Pick the smallest w that works to take advantage of Jerasure's flexibility
+	int w = 1;
+	while ((1 << w) < (k + m)) {
+		w <<= 1;
+	}
+*/
+	static const int w = 8;
+
+	int *matrix = cauchy_original_coding_matrix(k, m, w);
+	if (matrix == NULL) {
+		return -1;
+	}
+
+	cauchy_improve_coding_matrix(k, m, w, matrix);
+
+	int *bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+
+	// TODO: Better to not use smart?
+	int **smart = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
+
+	char **inputs = new char *[k];
+	const char *input_data = (const char *)data;
+	for (int ii = 0; ii < k; ++ii) {
+		inputs[ii] = (char*)input_data + ii * block_bytes;
+	}
+
+	char **coding = new char *[m];
+	char *output_data = (char *)recovery_blocks;
+	for (int ii = 0; ii < m; ++ii) {
+		coding[ii] = output_data + ii * block_bytes;
+	}
+
+	jerasure_schedule_encode(k, m, w, smart, inputs, coding, block_bytes, block_bytes/w);
+
+	return 0;
+}
+
+int jerasure_decode(int k, int m, Block *blocks, int block_bytes) {
+	static const int w = 8;
+
+	int *matrix = cauchy_original_coding_matrix(k, m, w);
+	if (matrix == NULL) {
+		return -1;
+	}
+
+	cauchy_improve_coding_matrix(k, m, w, matrix);
+
+	int *bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+
+	// TODO: Better to not use smart?
+	int **smart = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
+
+	int *erasures = new int[k];
+	char **inputs = new char *[k];
+	char **coding = new char *[m];
+
+	for (int ii = 0; ii < k; ++ii) {
+		erasures[ii] = 0;
+	}
+
+	int erasure_index = 0;
+	for (int ii = 0; ii < k; ++ii) {
+		int row = blocks[ii].row;
+
+		if (row < k) {
+			erasures[row] = -1;
+			inputs[row] = (char*)blocks[ii].data;
+		} else {
+			coding[erasure_index++] = (char*)blocks[ii].data;
+		}
+	}
+
+	// Set up erasures array
+	int erasure_count = 0;
+	for (int ii = 0; ii < k; ++ii) {
+		if (erasures[ii] == 0) {
+			erasures[erasure_count++] = ii;
+			inputs[ii] = coding[erasure_count++];
+		}
+	}
+	erasures[erasure_count] = -1;
+
+	// TODO: Better to not use smart?
+	jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, inputs, coding, block_bytes, block_bytes/w, 1);
+
+	return 0;
+}
+
 int main() {
 	m_clock.OnInitialize();
 
@@ -73,7 +168,7 @@ int main() {
 
 				double t0 = m_clock.usec();
 
-				assert(!cauchy_256_encode(block_count, recovery_block_count, data, recovery_blocks, block_bytes));
+				assert(!jerasure_encode(block_count, recovery_block_count, data, recovery_blocks, block_bytes));
 
 				double t1 = m_clock.usec();
 				double encode_time = t1 - t0;
@@ -95,7 +190,7 @@ int main() {
 
 				t0 = m_clock.usec();
 
-				assert(!cauchy_256_decode(block_count, recovery_block_count, blocks, block_bytes));
+				assert(!jerasure_decode(block_count, recovery_block_count, blocks, block_bytes));
 
 				t1 = m_clock.usec();
 				double decode_time = t1 - t0;
