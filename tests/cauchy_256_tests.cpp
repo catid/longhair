@@ -39,7 +39,7 @@ int jerasure_encode(int k, int m, const void *data, void *recovery_blocks, int b
 		w <<= 1;
 	}
 */
-	static const int w = 8;
+	static const int w = 6;
 
 	int *matrix = cauchy_original_coding_matrix(k, m, w);
 	if (matrix == NULL) {
@@ -133,7 +133,7 @@ int main() {
 
 	cout << "Cauchy RS Codec Unit Tester" << endl;
 
-	int block_bytes = 8 * 160; // a multiple of 8
+	int block_bytes = 6 * 248; // a multiple of 6
 
 	cout << "Using " << block_bytes << " bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes" << endl;
 
