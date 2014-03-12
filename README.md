@@ -241,7 +241,7 @@ the best performance when the value of "w" is tuned to be as small as possible,
 whereas it is fixed at w = 8 in Longhair.  For a favorable benchmark, set w = 6
 and k = 29, and recovery block count m = 1-5:
 
-##### liblonghair.a on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
+##### Jerasure unit tester on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
 
 With "smart scheduling": (Does not help for streaming scenario)
 
