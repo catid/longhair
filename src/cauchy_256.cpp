@@ -1231,6 +1231,13 @@ static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix,
 
 extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 {
+	// If there is only one input block,
+	if (k <= 1) {
+		// The block is already the same as original data
+		blocks[0].row = 0;
+		return 0;
+	}
+
 	// For the special case of one erasure,
 	if (m == 1) {
 		cauchy_decode_m1(k, blocks, block_bytes);
@@ -1388,7 +1395,7 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 // Windowed version of encoder
 static void win_encode(int k, int m, const u8 *matrix, int stride,
-					   const u8 *data, u8 *out, int subbytes)
+					   const u8 **data, u8 *out, int subbytes)
 {
 	static const int PRECOMP_TABLE_SIZE = 11;
 
@@ -1414,15 +1421,16 @@ static void win_encode(int k, int m, const u8 *matrix, int stride,
 	// For each column to generate,
 	for (int x = 0; x < k; ++x, ++matrix) {
 		const u8 *row = matrix;
+		u8 *src = (u8 *)data[x]; // cast to fit table type
 
 		// Fill in tables
-		for (int ii = 0; ii < 2; ++ii, data += subbytes * 4) {
+		for (int ii = 0; ii < 2; ++ii, src += subbytes * 4) {
 			u8 **table = tables[ii];
 
-			table[1] = (u8 *)data;
-			table[2] = (u8 *)data + subbytes;
-			table[4] = (u8 *)data + subbytes * 2;
-			table[8] = (u8 *)data + subbytes * 3;
+			table[1] = (u8 *)src;
+			table[2] = (u8 *)src + subbytes;
+			table[4] = (u8 *)src + subbytes * 2;
+			table[8] = (u8 *)src + subbytes * 3;
 
 			memxor_set(table[3], table[1], table[2], subbytes);
 			memxor_set(table[6], table[2], table[4], subbytes);
@@ -1469,25 +1477,27 @@ static void win_encode(int k, int m, const u8 *matrix, int stride,
 	delete []precomp;
 }
 
-extern "C" int cauchy_256_encode(int k, int m, const void *vdata,
+extern "C" int cauchy_256_encode(int k, int m, const u8 *data[],
 								 void *vrecovery_blocks, int block_bytes)
 {
-	const u8 *data = reinterpret_cast<const u8 *>( vdata );
 	u8 *recovery_blocks = reinterpret_cast<u8 *>( vrecovery_blocks );
 
 	// If only one input block,
 	if (k <= 1) {
-		// Copy it directly to output
-		memcpy(recovery_blocks, data, block_bytes);
-	} else {
-		// XOR all input blocks together
-		memxor_set(recovery_blocks, data, data + block_bytes, block_bytes);
-		const u8 *in = data + block_bytes;
-
-		for (int x = 2; x < k; ++x) {
-			in += block_bytes;
-			memxor(recovery_blocks, in, block_bytes);
+		// For each output block,
+		for (int ii = 0; ii < m; ++ii, recovery_blocks += block_bytes) {
+			// Copy it directly to output
+			memcpy(recovery_blocks, data[0], block_bytes);
 		}
+
+		return 0;
+	}
+
+	// XOR all input blocks together
+	memxor_set(recovery_blocks, data[0], data[1], block_bytes);
+
+	for (int x = 2; x < k; ++x) {
+		memxor(recovery_blocks, data[x], block_bytes);
 	}
 
 	// If only one recovery block needed,
@@ -1530,11 +1540,11 @@ extern "C" int cauchy_256_encode(int k, int m, const void *vdata,
 
 		// For each remaining row to generate,
 		for (int y = 1; y < m; ++y, row += stride, out += block_bytes) {
-			const u8 *src = data;
 			const u8 *column = row;
 
 			// For each symbol column,
-			for (int x = 0; x < k; ++x, ++column, src += block_bytes) {
+			for (int x = 0; x < k; ++x, ++column) {
+				const u8 *src = data[x];
 				u8 slice = column[0];
 				u8 *dest = out;
 

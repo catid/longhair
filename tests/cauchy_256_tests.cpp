@@ -55,6 +55,11 @@ int main() {
 			u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
 			Block *blocks = new Block[block_count];
 
+			const u8 *data_ptrs[256];
+			for (int ii = 0; ii < block_count; ++ii) {
+				data_ptrs[ii] = data + ii * block_bytes;
+			}
+
 			double sum_encode = 0;
 
 			int erasures_count;
@@ -73,7 +78,7 @@ int main() {
 
 				double t0 = m_clock.usec();
 
-				assert(!cauchy_256_encode(block_count, recovery_block_count, data, recovery_blocks, block_bytes));
+				assert(!cauchy_256_encode(block_count, recovery_block_count, data_ptrs, recovery_blocks, block_bytes));
 
 				double t1 = m_clock.usec();
 				double encode_time = t1 - t0;

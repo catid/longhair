@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define CAUCHY_256_VERSION 1
+#define CAUCHY_256_VERSION 2
 
 /*
  * Verify binary compatibility with the API on startup.
@@ -58,11 +58,12 @@ typedef struct _Block {
 /*
  * Cauchy encode
  *
- * This produces a set of recovery blocks that should be transmitted after the original data blocks.
+ * This produces a set of recovery blocks that should be transmitted after the
+ * original data blocks.
  *
  * It takes in k equal-sized blocks and produces m equal-sized recovery blocks.
- *
- * The recovery blocks are stored end-to-end in the recovery_blocks buffer.
+ * The input block pointer array allows more natural usage of the library.
+ * The output recovery blocks are stored end-to-end in the recovery_blocks.
  *
  * The number of bytes per block (block_bytes) should be a multiple of 8.
  *
@@ -75,26 +76,28 @@ typedef struct _Block {
  * Returns a valid state object on success.
  * Returns 0 on failure.
  */
-extern int cauchy_256_encode(int k, int m, const void *data, void *recovery_blocks, int block_bytes);
+extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], void *recovery_blocks, int block_bytes);
 
 /*
  * Cauchy decode
  *
- * This recovers the original data from the recovery data in the provided blocks.
+ * This recovers the original data from the recovery data in the provided
+ * blocks.
  *
  * You should provide the same k, m, block_bytes values used by the encoder.
  *
- * The blocks array contains pointers to data buffers, each of size block_bytes.
- * This array allows you to arrange the blocks in memory in any way that is convenient.
+ * The blocks array contains pointers to data buffers each with block_bytes.
+ * This array allows you to arrange the blocks in memory in any way that is
+ * convenient.
  *
- * The "row" should be set to the block index of the original data.  For example the
- * second packet should be row = 1.  The "row" should be set to k + i for the i'th
- * recovery block.  For example the first recovery block row is k, and the second
- * recovery block row is k + 1.
+ * The "row" should be set to the block index of the original data.
+ * For example the second packet should be row = 1.  The "row" should be set to
+ * k + i for the i'th recovery block.  For example the first recovery block row
+ * is k, and the second recovery block row is k + 1.
  *
- * I recommend filling in recovery blocks at the end of the array, and filling in
- * original data from the start.  This way when the function completes, all the
- * missing data will be clustered at the end.
+ * I recommend filling in recovery blocks at the end of the array, and filling
+ * in original data from the start.  This way when the function completes, all
+ * the missing data will be clustered at the end.
  *
  * Returns a valid state object on success.
  * Returns 0 on failure.

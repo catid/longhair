@@ -44,7 +44,6 @@ To generate redundancy, use the `cauchy_256_encode` function:
 
 ~~~
 	int data_len = ...;
-	char *data = ...;
 
 	int k = 32; // Choose a number of pieces to split the data into.
 	int m = 12; // Choose a number of redundant pieces to generate.
@@ -54,9 +53,12 @@ To generate redundancy, use the `cauchy_256_encode` function:
 	assert(data_len == k * bytes);
 
 	char *recovery_blocks = new char[m * bytes];
+	char *data_ptrs[32];
+
+	// Point data_ptrs to data here
 
 	// Encode the data using this library
-	if (cauchy_256_encode(k, m, data, recovery_blocks, bytes)) {
+	if (cauchy_256_encode(k, m, data_ptrs, recovery_blocks, bytes)) {
 		// Input was invalid
 		return false;
 	}
@@ -190,33 +192,33 @@ Turbo boost is enabled.
 Using 1296 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
 
 Encoded k=29 data blocks with m=1 recovery blocks in 1 usec : 37584 MB/s
-+ Decoded 1 erasures in 2 usec : 18792 MB/s
++ Decoded 1 erasures in 1 usec : 37584 MB/s
 Encoded k=29 data blocks with m=2 recovery blocks in 12 usec : 3132 MB/s
-+ Decoded 2 erasures in 14 usec : 2684.57 MB/s
++ Decoded 2 erasures in 13 usec : 2891.08 MB/s
 Encoded k=29 data blocks with m=3 recovery blocks in 25 usec : 1503.36 MB/s
 + Decoded 3 erasures in 30 usec : 1252.8 MB/s
-Encoded k=29 data blocks with m=4 recovery blocks in 41 usec : 916.683 MB/s
-+ Decoded 4 erasures in 50 usec : 751.68 MB/s
-Encoded k=29 data blocks with m=5 recovery blocks in 38 usec : 989.053 MB/s
-+ Decoded 5 erasures in 50 usec : 751.68 MB/s
-Encoded k=29 data blocks with m=6 recovery blocks in 46 usec : 817.043 MB/s
-+ Decoded 6 erasures in 59 usec : 637.017 MB/s
-Encoded k=29 data blocks with m=7 recovery blocks in 51 usec : 736.941 MB/s
-+ Decoded 7 erasures in 69 usec : 544.696 MB/s
-Encoded k=29 data blocks with m=8 recovery blocks in 58 usec : 648 MB/s
-+ Decoded 8 erasures in 80 usec : 469.8 MB/s
-Encoded k=29 data blocks with m=9 recovery blocks in 63 usec : 596.571 MB/s
-+ Decoded 9 erasures in 91 usec : 413.011 MB/s
-Encoded k=29 data blocks with m=10 recovery blocks in 69 usec : 544.696 MB/s
-+ Decoded 10 erasures in 102 usec : 368.471 MB/s
-Encoded k=29 data blocks with m=11 recovery blocks in 75 usec : 501.12 MB/s
-+ Decoded 11 erasures in 112 usec : 335.571 MB/s
-Encoded k=29 data blocks with m=12 recovery blocks in 82 usec : 458.341 MB/s
-+ Decoded 12 erasures in 125 usec : 300.672 MB/s
-Encoded k=29 data blocks with m=13 recovery blocks in 89 usec : 422.292 MB/s
-+ Decoded 13 erasures in 138 usec : 272.348 MB/s
-Encoded k=29 data blocks with m=14 recovery blocks in 93 usec : 404.129 MB/s
-+ Decoded 14 erasures in 149 usec : 252.242 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 42 usec : 894.857 MB/s
++ Decoded 4 erasures in 57 usec : 659.368 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 32 usec : 1174.5 MB/s
++ Decoded 5 erasures in 43 usec : 874.047 MB/s
+Encoded k=29 data blocks with m=6 recovery blocks in 36 usec : 1044 MB/s
++ Decoded 6 erasures in 52 usec : 722.769 MB/s
+Encoded k=29 data blocks with m=7 recovery blocks in 41 usec : 916.683 MB/s
++ Decoded 7 erasures in 58 usec : 648 MB/s
+Encoded k=29 data blocks with m=8 recovery blocks in 46 usec : 817.043 MB/s
++ Decoded 8 erasures in 66 usec : 569.455 MB/s
+Encoded k=29 data blocks with m=9 recovery blocks in 52 usec : 722.769 MB/s
++ Decoded 9 erasures in 84 usec : 447.429 MB/s
+Encoded k=29 data blocks with m=10 recovery blocks in 57 usec : 659.368 MB/s
++ Decoded 10 erasures in 90 usec : 417.6 MB/s
+Encoded k=29 data blocks with m=11 recovery blocks in 62 usec : 606.194 MB/s
++ Decoded 11 erasures in 124 usec : 303.097 MB/s
+Encoded k=29 data blocks with m=12 recovery blocks in 66 usec : 569.455 MB/s
++ Decoded 12 erasures in 111 usec : 338.595 MB/s
+Encoded k=29 data blocks with m=13 recovery blocks in 71 usec : 529.352 MB/s
++ Decoded 13 erasures in 122 usec : 308.066 MB/s
+Encoded k=29 data blocks with m=14 recovery blocks in 77 usec : 488.104 MB/s
++ Decoded 14 erasures in 133 usec : 282.586 MB/s
 ~~~
 
 Note that the codec is specialized for the `m = 1` case and runs very quickly.
