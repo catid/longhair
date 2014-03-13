@@ -29,7 +29,8 @@ release : library
 
 # Debug target
 
-debug : CFLAGS += $(DBGFLAGS) -DCAT_CAUCHY_LOG
+debug : CFLAGS += $(DBGFLAGS)
+#-DCAT_CAUCHY_LOG
 debug : LIBNAME = $(DBGLIBNAME)
 debug : library
 

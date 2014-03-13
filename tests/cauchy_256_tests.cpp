@@ -27,6 +27,74 @@ static void print(const void *data, int bytes) {
 #define CAT_WORST_CASE_BENCHMARK
 #define CAT_REASONABLE_RECOVERY_COUNT
 
+// Test to make sure that Longhair works well with input ordered like this for
+// k = 4 and m = 2
+// 0
+// 2
+// 3
+// 5
+// 6
+void order_test() {
+	int block_bytes = 8 * 162; // a multiple of 8
+
+	Abyssinian prng;
+	prng.Initialize(m_clock.msec(), Clock::cycles());
+
+	int block_count = 4;
+	int recovery_block_count = 2;
+
+	u8 *data = new u8[block_bytes * block_count];
+	u8 *recovery_blocks = new u8[block_bytes * recovery_block_count];
+	Block *blocks = new Block[block_count];
+
+	const u8 *data_ptrs[256];
+	for (int ii = 0; ii < block_count; ++ii) {
+		data_ptrs[ii] = data + ii * block_bytes;
+	}
+
+	for (int ii = 0; ii < block_bytes * block_count; ++ii) {
+		data[ii] = (u8)prng.Next();
+	}
+
+	assert(!cauchy_256_encode(block_count, recovery_block_count, data_ptrs, recovery_blocks, block_bytes));
+
+	for (int ii = 0; ii < block_count; ++ii) {
+		blocks[ii].data = (u8*)data_ptrs[ii];
+		blocks[ii].row = (u8)ii;
+	}
+
+	int rem = block_count;
+	for (int ii = 0; ii < recovery_block_count; ++ii) {
+		int jj = prng.Next() % rem;
+
+		--rem;
+
+		for (int kk = jj; kk < rem; ++kk) {
+			blocks[kk].data = blocks[kk + 1].data;
+			blocks[kk].row = blocks[kk + 1].row;
+		}
+
+		blocks[rem].data = recovery_blocks + ii * block_bytes;
+		blocks[rem].row = block_count + ii;
+	}
+
+	cout << "Before decode:" << endl;
+	for (int ii = 0; ii < block_count; ++ii) {
+		cout << (int)blocks[ii].row << endl;
+	}
+
+	assert(!cauchy_256_decode(block_count, recovery_block_count, blocks, block_bytes));
+
+	cout << "After decode:" << endl;
+	for (int ii = 0; ii < block_count; ++ii) {
+		cout << (int)blocks[ii].row << endl;
+	}
+
+	for (int ii = 0; ii < block_count; ++ii) {
+		assert(!memcmp(blocks[ii].data, data_ptrs[blocks[ii].row], block_bytes));
+	}
+}
+
 int main() {
 	m_clock.OnInitialize();
 
@@ -35,6 +103,8 @@ int main() {
 	m_clock.usec();
 
 	cout << "Cauchy RS Codec Unit Tester" << endl;
+
+	order_test();
 
 	int block_bytes = 8 * 162; // a multiple of 8
 
