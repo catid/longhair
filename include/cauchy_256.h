@@ -73,8 +73,7 @@ typedef struct _Block {
  * and the recovery block index is also needed.  The decoder should also
  * be provided with the values of k, m, and block_bytes used for encoding.
  *
- * Returns a valid state object on success.
- * Returns 0 on failure.
+ * Returns 0 on success, and any other code indicates failure.
  */
 extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], void *recovery_blocks, int block_bytes);
 
@@ -99,8 +98,7 @@ extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], voi
  * in original data from the start.  This way when the function completes, all
  * the missing data will be clustered at the end.
  *
- * Returns a valid state object on success.
- * Returns 0 on failure.
+ * Returns 0 on success, and any other code indicates failure.
  */
 extern int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes);
 
