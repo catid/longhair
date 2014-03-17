@@ -708,14 +708,14 @@ template<typename T> CAT_INLINE T AbsVal(const T &x)
 
 //// Rotation macros ////
 
-#define CAT_ROL8(n, r)  ( ((u8)(n) << (r)) | ((u8)(n) >> ( 8 - (r))) ) /* only works for u8 */
-#define CAT_ROR8(n, r)  ( ((u8)(n) >> (r)) | ((u8)(n) << ( 8 - (r))) ) /* only works for u8 */
-#define CAT_ROL16(n, r) ( ((u16)(n) << (r)) | ((u16)(n) >> (16 - (r))) ) /* only works for u16 */
-#define CAT_ROR16(n, r) ( ((u16)(n) >> (r)) | ((u16)(n) << (16 - (r))) ) /* only works for u16 */
-#define CAT_ROL32(n, r) ( ((u32)(n) << (r)) | ((u32)(n) >> (32 - (r))) ) /* only works for u32 */
-#define CAT_ROR32(n, r) ( ((u32)(n) >> (r)) | ((u32)(n) << (32 - (r))) ) /* only works for u32 */
-#define CAT_ROL64(n, r) ( ((u64)(n) << (r)) | ((u64)(n) >> (64 - (r))) ) /* only works for u64 */
-#define CAT_ROR64(n, r) ( ((u64)(n) >> (r)) | ((u64)(n) << (64 - (r))) ) /* only works for u64 */
+#define CAT_ROL8(n, r)  ( (u8)((u8)(n) << (r)) | (u8)((u8)(n) >> ( 8 - (r))) ) /* only works for u8 */
+#define CAT_ROR8(n, r)  ( (u8)((u8)(n) >> (r)) | (u8)((u8)(n) << ( 8 - (r))) ) /* only works for u8 */
+#define CAT_ROL16(n, r) ( (u16)((u16)(n) << (r)) | (u16)((u16)(n) >> (16 - (r))) ) /* only works for u16 */
+#define CAT_ROR16(n, r) ( (u16)((u16)(n) >> (r)) | (u16)((u16)(n) << (16 - (r))) ) /* only works for u16 */
+#define CAT_ROL32(n, r) ( (u32)((u32)(n) << (r)) | (u32)((u32)(n) >> (32 - (r))) ) /* only works for u32 */
+#define CAT_ROR32(n, r) ( (u32)((u32)(n) >> (r)) | (u32)((u32)(n) << (32 - (r))) ) /* only works for u32 */
+#define CAT_ROL64(n, r) ( (u64)((u64)(n) << (r)) | (u64)((u64)(n) >> (64 - (r))) ) /* only works for u64 */
+#define CAT_ROR64(n, r) ( (u64)((u64)(n) >> (r)) | (u64)((u64)(n) << (64 - (r))) ) /* only works for u64 */
 
 
 //// Byte-order swapping ////

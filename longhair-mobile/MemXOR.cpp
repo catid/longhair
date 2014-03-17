@@ -47,42 +47,42 @@ void cat::memxor(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT vinput, 
 	*/
 
 	// Primary engine
-	u64 * CAT_RESTRICT output64 = reinterpret_cast<u64 *>( voutput );
-	const u64 * CAT_RESTRICT input64 = reinterpret_cast<const u64 *>( vinput );
+#ifdef CAT_WORD_64
+	u64 * CAT_RESTRICT output_w = reinterpret_cast<u64 *>( voutput );
+	const u64 * CAT_RESTRICT input_w = reinterpret_cast<const u64 *>( vinput );
+#else
+	u32 * CAT_RESTRICT output_w = reinterpret_cast<u32 *>( voutput );
+	const u32 * CAT_RESTRICT input_w = reinterpret_cast<const u32 *>( vinput );
+#endif
 
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 #ifdef CAT_WORD_64
-	if ((*(u64*)&output64 | *(u64*)&input64) & 15) {
+	if ((*(u64*)&output_w | *(u64*)&input_w) & 15) {
 #else
-	if ((*(u32*)&output64 | *(u32*)&input64) & 15) {
+	if ((*(u32*)&output_w | *(u32*)&input_w) & 15) {
 #endif
 #endif
 		while (bytes >= 128)
 		{
-			output64[0] ^= input64[0];
-			output64[1] ^= input64[1];
-			output64[2] ^= input64[2];
-			output64[3] ^= input64[3];
-			output64[4] ^= input64[4];
-			output64[5] ^= input64[5];
-			output64[6] ^= input64[6];
-			output64[7] ^= input64[7];
-			output64[8] ^= input64[8];
-			output64[9] ^= input64[9];
-			output64[10] ^= input64[10];
-			output64[11] ^= input64[11];
-			output64[12] ^= input64[12];
-			output64[13] ^= input64[13];
-			output64[14] ^= input64[14];
-			output64[15] ^= input64[15];
-			output64 += 16;
-			input64 += 16;
+#ifdef CAT_WORD_64
+			for (int ii = 0; ii < 16; ++ii) {
+				output_w[ii] ^= input_w[ii];
+			}
+			output_w += 16;
+			input_w += 16;
+#else
+			for (int ii = 0; ii < 32; ++ii) {
+				output_w[ii] ^= input_w[ii];
+			}
+			output_w += 32;
+			input_w += 32;
+#endif
 			bytes -= 128;
 		}
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 	} else {
-		vec_block * CAT_RESTRICT in_block = (vec_block * CAT_RESTRICT)input64;
-		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output64;
+		vec_block * CAT_RESTRICT in_block = (vec_block * CAT_RESTRICT)input_w;
+		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output_w;
 
 		while (bytes >= 128)
 		{
@@ -90,21 +90,28 @@ void cat::memxor(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT vinput, 
 			bytes -= 128;
 		}
 
-		output64 = (u64 * CAT_RESTRICT)out_block;
-		input64 = (u64 * CAT_RESTRICT)in_block;
+		output_w = (u64 * CAT_RESTRICT)out_block;
+		input_w = (u64 * CAT_RESTRICT)in_block;
 	}
 #endif
 
 	// Handle remaining multiples of 8 bytes
 	while (bytes >= 8)
 	{
-		*output64++ ^= *input64++;
+#ifdef CAT_WORD_64
+		*output_w++ ^= *input_w++;
+#else
+		output_w[0] ^= input_w[0];
+		output_w[1] ^= input_w[1];
+		output_w += 2;
+		input_w += 2;
+#endif
 		bytes -= 8;
 	}
 
 	// Handle final <8 bytes
-	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output64 );
-	const u8 * CAT_RESTRICT input = reinterpret_cast<const u8 *>( input64 );
+	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output_w );
+	const u8 * CAT_RESTRICT input = reinterpret_cast<const u8 *>( input_w );
 
 	switch (bytes)
 	{
@@ -130,45 +137,47 @@ void cat::memxor_set(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT va, 
 	*/
 
 	// Primary engine
-	u64 * CAT_RESTRICT output64 = reinterpret_cast<u64 *>( voutput );
-	const u64 * CAT_RESTRICT a64 = reinterpret_cast<const u64 *>( va );
-	const u64 * CAT_RESTRICT b64 = reinterpret_cast<const u64 *>( vb );
+#ifdef CAT_WORD_64
+	u64 * CAT_RESTRICT output_w = reinterpret_cast<u64 *>( voutput );
+	const u64 * CAT_RESTRICT a_w = reinterpret_cast<const u64 *>( va );
+	const u64 * CAT_RESTRICT b_w = reinterpret_cast<const u64 *>( vb );
+#else
+	u32 * CAT_RESTRICT output_w = reinterpret_cast<u32 *>( voutput );
+	const u32 * CAT_RESTRICT a_w = reinterpret_cast<const u32 *>( va );
+	const u32 * CAT_RESTRICT b_w = reinterpret_cast<const u32 *>( vb );
+#endif
 
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 #ifdef CAT_WORD_64
-	if ((*(u64*)&voutput | *(u64*)&va | *(u64*)&vb) & 15) {
+	if ((*(u64*)&output_w | *(u64*)&a_w | *(u64*)&b_w) & 15) {
 #else
-	if ((*(u32*)&voutput | *(u32*)&va | *(u32*)&vb) & 15) {
+	if ((*(u32*)&output_w | *(u32*)&a_w | *(u32*)&b_w) & 15) {
 #endif
 #endif
 		while (bytes >= 128)
 		{
-			output64[0] = a64[0] ^ b64[0];
-			output64[1] = a64[1] ^ b64[1];
-			output64[2] = a64[2] ^ b64[2];
-			output64[3] = a64[3] ^ b64[3];
-			output64[4] = a64[4] ^ b64[4];
-			output64[5] = a64[5] ^ b64[5];
-			output64[6] = a64[6] ^ b64[6];
-			output64[7] = a64[7] ^ b64[7];
-			output64[8] = a64[8] ^ b64[8];
-			output64[9] = a64[9] ^ b64[9];
-			output64[10] = a64[10] ^ b64[10];
-			output64[11] = a64[11] ^ b64[11];
-			output64[12] = a64[12] ^ b64[12];
-			output64[13] = a64[13] ^ b64[13];
-			output64[14] = a64[14] ^ b64[14];
-			output64[15] = a64[15] ^ b64[15];
-			output64 += 16;
-			a64 += 16;
-			b64 += 16;
+#ifdef CAT_WORD_64
+			for (int ii = 0; ii < 16; ++ii) {
+				output_w[ii] = a_w[ii] ^ b_w[ii];
+			}
+			output_w += 16;
+			a_w += 16;
+			b_w += 16;
+#else
+			for (int ii = 0; ii < 32; ++ii) {
+				output_w[ii] = a_w[ii] ^ b_w[ii];
+			}
+			output_w += 32;
+			a_w += 32;
+			b_w += 32;
+#endif
 			bytes -= 128;
 		}
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 	} else {
-		vec_block * CAT_RESTRICT in_block1 = (vec_block * CAT_RESTRICT)a64;
-		vec_block * CAT_RESTRICT in_block2 = (vec_block * CAT_RESTRICT)b64;
-		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output64;
+		vec_block * CAT_RESTRICT in_block1 = (vec_block * CAT_RESTRICT)a_w;
+		vec_block * CAT_RESTRICT in_block2 = (vec_block * CAT_RESTRICT)b_w;
+		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output_w;
 
 		while (bytes >= 128)
 		{
@@ -176,23 +185,31 @@ void cat::memxor_set(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT va, 
 			bytes -= 128;
 		}
 
-		output64 = (u64 * CAT_RESTRICT)out_block;
-		a64 = (u64 * CAT_RESTRICT)in_block1;
-		b64 = (u64 * CAT_RESTRICT)in_block2;
+		output_w = (u64 * CAT_RESTRICT)out_block;
+		a_w = (u64 * CAT_RESTRICT)in_block1;
+		b_w = (u64 * CAT_RESTRICT)in_block2;
 	}
 #endif
 
 	// Handle remaining multiples of 8 bytes
 	while (bytes >= 8)
 	{
-		*output64++ = *a64++ ^ *b64++;
+#ifdef CAT_WORD_64
+		*output_w++ = *a_w++ ^ *b_w++;
+#else
+		output_w[0] = a_w[0] ^ b_w[0];
+		output_w[1] = a_w[1] ^ b_w[1];
+		output_w += 2;
+		a_w += 2;
+		b_w += 2;
+#endif
 		bytes -= 8;
 	}
 
 	// Handle final <8 bytes
-	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output64 );
-	const u8 * CAT_RESTRICT a = reinterpret_cast<const u8 *>( a64 );
-	const u8 * CAT_RESTRICT b = reinterpret_cast<const u8 *>( b64 );
+	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output_w );
+	const u8 * CAT_RESTRICT a = reinterpret_cast<const u8 *>( a_w );
+	const u8 * CAT_RESTRICT b = reinterpret_cast<const u8 *>( b_w );
 
 	switch (bytes)
 	{
@@ -217,45 +234,47 @@ void cat::memxor_add(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT va, 
 	*/
 
 	// Primary engine
-	u64 * CAT_RESTRICT output64 = reinterpret_cast<u64 *>( voutput );
-	const u64 * CAT_RESTRICT a64 = reinterpret_cast<const u64 *>( va );
-	const u64 * CAT_RESTRICT b64 = reinterpret_cast<const u64 *>( vb );
+#ifdef CAT_WORD_64
+	u64 * CAT_RESTRICT output_w = reinterpret_cast<u64 *>( voutput );
+	const u64 * CAT_RESTRICT a_w = reinterpret_cast<const u64 *>( va );
+	const u64 * CAT_RESTRICT b_w = reinterpret_cast<const u64 *>( vb );
+#else
+	u32 * CAT_RESTRICT output_w = reinterpret_cast<u32 *>( voutput );
+	const u32 * CAT_RESTRICT a_w = reinterpret_cast<const u32 *>( va );
+	const u32 * CAT_RESTRICT b_w = reinterpret_cast<const u32 *>( vb );
+#endif
 
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 #ifdef CAT_WORD_64
-	if ((*(u64*)&voutput | *(u64*)&va | *(u64*)&vb) & 15) {
+	if ((*(u64*)&output_w | *(u64*)&a_w | *(u64*)&b_w) & 15) {
 #else
-	if ((*(u32*)&voutput | *(u32*)&va | *(u32*)&vb) & 15) {
+	if ((*(u32*)&output_w | *(u32*)&a_w | *(u32*)&b_w) & 15) {
 #endif
 #endif
 		while (bytes >= 128)
 		{
-			output64[0] ^= a64[0] ^ b64[0];
-			output64[1] ^= a64[1] ^ b64[1];
-			output64[2] ^= a64[2] ^ b64[2];
-			output64[3] ^= a64[3] ^ b64[3];
-			output64[4] ^= a64[4] ^ b64[4];
-			output64[5] ^= a64[5] ^ b64[5];
-			output64[6] ^= a64[6] ^ b64[6];
-			output64[7] ^= a64[7] ^ b64[7];
-			output64[8] ^= a64[8] ^ b64[8];
-			output64[9] ^= a64[9] ^ b64[9];
-			output64[10] ^= a64[10] ^ b64[10];
-			output64[11] ^= a64[11] ^ b64[11];
-			output64[12] ^= a64[12] ^ b64[12];
-			output64[13] ^= a64[13] ^ b64[13];
-			output64[14] ^= a64[14] ^ b64[14];
-			output64[15] ^= a64[15] ^ b64[15];
-			output64 += 16;
-			a64 += 16;
-			b64 += 16;
+#ifdef CAT_WORD_64
+			for (int ii = 0; ii < 16; ++ii) {
+				output_w[ii] ^= a_w[ii] ^ b_w[ii];
+			}
+			output_w += 16;
+			a_w += 16;
+			b_w += 16;
+#else
+			for (int ii = 0; ii < 32; ++ii) {
+				output_w[ii] ^= a_w[ii] ^ b_w[ii];
+			}
+			output_w += 32;
+			a_w += 32;
+			b_w += 32;
+#endif
 			bytes -= 128;
 		}
 #ifdef CAT_HAS_VECTOR_EXTENSIONS
 	} else {
-		vec_block * CAT_RESTRICT in_block1 = (vec_block * CAT_RESTRICT)a64;
-		vec_block * CAT_RESTRICT in_block2 = (vec_block * CAT_RESTRICT)b64;
-		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output64;
+		vec_block * CAT_RESTRICT in_block1 = (vec_block * CAT_RESTRICT)a_w;
+		vec_block * CAT_RESTRICT in_block2 = (vec_block * CAT_RESTRICT)b_w;
+		vec_block * CAT_RESTRICT out_block = (vec_block * CAT_RESTRICT)output_w;
 
 		while (bytes >= 128)
 		{
@@ -263,23 +282,31 @@ void cat::memxor_add(void * CAT_RESTRICT voutput, const void * CAT_RESTRICT va, 
 			bytes -= 128;
 		}
 
-		output64 = (u64 * CAT_RESTRICT)out_block;
-		a64 = (u64 * CAT_RESTRICT)in_block1;
-		b64 = (u64 * CAT_RESTRICT)in_block2;
+		output_w = (u64 * CAT_RESTRICT)out_block;
+		a_w = (u64 * CAT_RESTRICT)in_block1;
+		b_w = (u64 * CAT_RESTRICT)in_block2;
 	}
 #endif
 
 	// Handle remaining multiples of 8 bytes
 	while (bytes >= 8)
 	{
-		*output64++ ^= *a64++ ^ *b64++;
+#ifdef CAT_WORD_64
+		*output_w++ ^= *a_w++ ^ *b_w++;
+#else
+		output_w[0] ^= a_w[0] ^ b_w[0];
+		output_w[1] ^= a_w[1] ^ b_w[1];
+		output_w += 2;
+		a_w += 2;
+		b_w += 2;
+#endif
 		bytes -= 8;
 	}
 
 	// Handle final <8 bytes
-	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output64 );
-	const u8 * CAT_RESTRICT a = reinterpret_cast<const u8 *>( a64 );
-	const u8 * CAT_RESTRICT b = reinterpret_cast<const u8 *>( b64 );
+	u8 * CAT_RESTRICT output = reinterpret_cast<u8 *>( output_w );
+	const u8 * CAT_RESTRICT a = reinterpret_cast<const u8 *>( a_w );
+	const u8 * CAT_RESTRICT b = reinterpret_cast<const u8 *>( b_w );
 
 	switch (bytes)
 	{

@@ -545,7 +545,7 @@ static void sort_blocks(int k, Block *blocks,
 	}
 
 	// Identify erasures
-	for (int ii = 0, erasure_count = 0; erasure_count < recovery_count; ++ii) {
+	for (int ii = 0, erasure_count = 0; ii < 256 && erasure_count < recovery_count; ++ii) {
 		if (!erasures[ii]) {
 			erasures[erasure_count++] = ii;
 		}
@@ -650,18 +650,18 @@ static void eliminate_original(Block *original[256], int original_count,
 		for (int jj = 0; jj < original_count; ++jj) {
 			Block *original_block = original[jj];
 			int original_row = original_block->row;
+			u8 *dest = recovery_block->data;
 
 			DLOG(cout << "++ Eliminating original column " << original_row << endl;)
 
 			// If this matrix element is an 8x8 identity matrix,
 			if (matrix_row < 0 || row[original_row] == 1) {
 				// XOR whole block at once
-				memxor(recovery_block->data, original_block->data, subbytes * 8);
+				memxor(dest, original_block->data, subbytes * 8);
 				DLOG(cout << "XOR" << endl;)
 			} else {
 				// Grab the matrix entry for this row,
 				u8 slice = row[original_row];
-				u8 *dest = recovery_block->data;
 
 				// XOR in bits set in 8x8 submatrix
 				for (int bit_y = 0;; ++bit_y) {
