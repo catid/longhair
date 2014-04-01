@@ -1,12 +1,12 @@
 # Change your compiler settings here
 
 # Clang seems to produce faster code
-#CCPP = g++
-#CC = gcc
-#OPTFLAGS = -O3 -fomit-frame-pointer -funroll-loops
-CCPP = clang++ -m64
-CC = clang -m64
-OPTFLAGS = -O4
+CCPP = g++
+CC = gcc
+OPTFLAGS = -O3 -fomit-frame-pointer -funroll-loops
+#CCPP = clang++ -m64
+#CC = clang -m64
+#OPTFLAGS = -O4
 DBGFLAGS = -g -O0 -DDEBUG
 CFLAGS = -Wall -fstrict-aliasing -I./libcat -I./include
 OPTLIBNAME = bin/liblonghair.a
