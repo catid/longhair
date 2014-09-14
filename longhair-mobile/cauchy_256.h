@@ -39,10 +39,9 @@ extern "C" {
  * Verify binary compatibility with the API on startup.
  *
  * Example:
- * 	if (!cauchy_256_init()) exit(1);
+ * 	if (cauchy_256_init()) exit(1);
  *
- * Returns non-zero on success.
- * Returns 0 if the API level does not match.
+ * Returns 0 on success, and any other code indicates failure.
  */
 extern int _cauchy_256_init(int expected_version);
 #define cauchy_256_init() _cauchy_256_init(CAUCHY_256_VERSION)
