@@ -215,7 +215,7 @@ using namespace std;
 #define DLOG(x)
 #endif
 
-#include "BitMath.hpp"
+//#include "BitMath.hpp"
 #include "MemXOR.hpp"
 #include "MemSwap.hpp"
 using namespace cat;

@@ -15,7 +15,7 @@ DBGLIBNAME = bin/liblonghair_debug.a
 
 # Object files
 
-library_o = cauchy_256.o MemXOR.o MemSwap.o BitMath.o
+library_o = cauchy_256.o MemXOR.o MemSwap.o
 
 test_o = cauchy_256_tests.o Clock.o
 
@@ -63,9 +63,6 @@ test-mobile : release $(test_o)
 
 Clock.o : libcat/Clock.cpp
 	$(CCPP) $(CFLAGS) -c libcat/Clock.cpp
-
-BitMath.o : libcat/BitMath.cpp
-	$(CCPP) $(CFLAGS) -c libcat/BitMath.cpp
 
 MemXOR.o : libcat/MemXOR.cpp
 	$(CCPP) $(CFLAGS) -c libcat/MemXOR.cpp

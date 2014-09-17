@@ -14,7 +14,7 @@ OPTLIBNAME = liblonghair.a
 
 # Object files
 
-library_o = BitMath.o MemXOR.o MemSwap.o cauchy_256.o
+library_o = MemXOR.o MemSwap.o cauchy_256.o
 
 
 # Release target (default)
@@ -31,9 +31,6 @@ library : clean $(library_o)
 
 
 # LibCat objects
-
-BitMath.o : BitMath.cpp
-	$(CCPP) $(CFLAGS) -c BitMath.cpp
 
 MemXOR.o : MemXOR.cpp
 	$(CCPP) $(CFLAGS) -c MemXOR.cpp
