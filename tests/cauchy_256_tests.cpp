@@ -134,7 +134,12 @@ int main() {
 
 			int erasures_count;
 #ifdef CAT_WORST_CASE_BENCHMARK
-			erasures_count = min(recovery_block_count, block_count); {
+            erasures_count = recovery_block_count;
+            if (block_count < erasures_count)
+            {
+                erasures_count = block_count;
+            }
+            {
 #else
 # ifdef CAT_ENCODE_TIMES_ONLY
 			for (erasures_count = 1; erasures_count <= 4 && erasures_count <= recovery_block_count && erasures_count <= block_count; ++erasures_count) {

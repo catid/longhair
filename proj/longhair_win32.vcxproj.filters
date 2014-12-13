@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\cauchy_256">
+      <UniqueIdentifier>{f539b302-2428-4031-a2d3-b92d5ddf896b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\cauchy_256">
+      <UniqueIdentifier>{b79f12d1-358f-4b16-92ec-de53e690ecc4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\tests">
+      <UniqueIdentifier>{a017d409-e843-43ca-bbd9-4037adb1dc1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\tests">
+      <UniqueIdentifier>{4ab10e70-0387-4e52-b014-4eb17921784e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\cauchy_256.cpp">
+      <Filter>Source Files\cauchy_256</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libcat\MemSwap.cpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libcat\MemXOR.cpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\cauchy_256_tests.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libcat\Clock.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\cauchy_tables_256.inc">
+      <Filter>Source Files\cauchy_256</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\cauchy_256.h">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\Config.hpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\MemSwap.hpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\MemXOR.hpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\Platform.hpp">
+      <Filter>Header Files\cauchy_256</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\Clock.hpp">
+      <Filter>Header Files\tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libcat\AbyssinianPRNG.hpp">
+      <Filter>Header Files\tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
