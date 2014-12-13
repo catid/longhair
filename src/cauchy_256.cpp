@@ -486,13 +486,21 @@ static const u8 *cauchy_matrix(int k, int m, int &stride,
 static void cauchy_decode_m1(int k, Block *blocks, int block_bytes)
 {
 	// Find erased row
-	Block *erased = blocks;
-	for (int ii = 0; ii < k; ++ii, ++erased) {
-		if (erased->row >= k) {
-			DLOG(cout << "Found erased row " << ii << " on block row " << (int)erased->row << endl;)
+	Block *erased = 0;
+	for (int ii = 0; ii < k; ++ii) {
+		if (blocks[ii].row >= k) {
+            erased = &blocks[ii];
+            DLOG(cout << "Found erased row " << ii << " on block row " << (int)erased->row << endl;)
 			break;
 		}
 	}
+
+    // If nothing was erased,
+    if (!erased)
+    {
+        // Nothing to decode!
+        return;
+    }
 
 	// XOR all other blocks into the recovery block
 	u8 *out = erased->data;
