@@ -506,10 +506,16 @@ static void cauchy_decode_m1(int k, Block *blocks, int block_bytes)
 	u8 *out = erased->data;
 	const u8 *in = 0;
 
+    // Identify which row was lost.
+    bool original[256] = {}; // init to all false
+
 	// For each block,
 	for (int ii = 0; ii < k; ++ii) {
 		Block *block = blocks + ii;
 		if (block != erased) {
+            if (block->row < k) {
+                original[block->row] = true; // set seen rows to true
+            }
 			if (!in) {
 				in = block->data;
 			} else {
@@ -523,6 +529,14 @@ static void cauchy_decode_m1(int k, Block *blocks, int block_bytes)
 	if (in) {
 		memxor(out, in, block_bytes);
 	}
+
+    // Update the row.
+    for (int ii = 0; ii < k; ++ii) {
+        if (!original[ii]) {
+            erased->row = ii; // only not seen row is the right one
+            break;
+        }
+    }
 }
 
 // Sort blocks into original and recovery blocks
