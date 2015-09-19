@@ -174,7 +174,7 @@ is more applicable:
 		block = block_info + k - recovery_count;
 		for (int ii = 0; ii < recovery_count; ++ii, ++block) {
 			// Process the recovered data
-			processData(row, block->data, bytes);
+			processData(block->row, block->data, bytes);
 		}
 
 		return true;
