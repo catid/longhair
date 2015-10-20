@@ -2,8 +2,8 @@
 ## Fast Cauchy Reed-Solomon Erasure Codes in C
 
 Longhair is a simple, portable library for erasure codes.  From given data it generates
-redundant data that can be used to recover the originals.  It is extremely fast, perhaps
-the fastest software implementation available for erasure codes.
+redundant data that can be used to recover the originals.  It is extremely fast, though
+not as fast as the [CM256 library](https://github.com/catid/cm256).
 
 The original data should be split up into equally-sized chunks.  If one of these chunks
 is erased, the redundant data can fill in the gap through decoding.
