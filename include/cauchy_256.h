@@ -46,7 +46,7 @@ extern "C" {
  */
 extern int _cauchy_256_init(int expected_version);
 #define cauchy_256_init() _cauchy_256_init(CAUCHY_256_VERSION)
-
+extern void cauchy_256_destroy();
 
 // Descriptor for received data block
 typedef struct _Block {

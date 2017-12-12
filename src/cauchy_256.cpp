@@ -397,6 +397,17 @@ extern "C" int _cauchy_256_init(int expected_version)
 	return 0;
 }
 
+extern "C" void cauchy_256_destroy()
+{
+    if (!GFC256_MUL_TABLE) {
+        return;
+    }
+
+    delete[] GFC256_MUL_TABLE;
+    GFC256_MUL_TABLE = 0;
+    GFC256_DIV_TABLE = 0;
+}
+
 // return x * y in GF(256)
 // For repeated multiplication by a constant, it is faster to put the constant in y.
 static CAT_INLINE u8 GFC256Multiply(u8 x, u8 y)
