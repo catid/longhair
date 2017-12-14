@@ -408,7 +408,7 @@ extern "C" void cauchy_256_deinit()
 extern "C" Cauchy256 *cauchy_256_create(size_t maxBlockBytes)
 {
     Cauchy256* c256 = new Cauchy256;
-    const size_t bufferSize = maxBlockBytes * PRECOMP_TABLE_SIZE * 2;
+    const size_t bufferSize = (maxBlockBytes / 8) * PRECOMP_TABLE_SIZE * 2;
     c256->buffer = new unsigned char[bufferSize];
     c256->maxBlockBytes = maxBlockBytes;
     c256->maxBufferSize = bufferSize;
@@ -739,7 +739,7 @@ static u64 *generate_bitmatrix(Cauchy256* c256, int k, Block *recovery[256],
 	// Allocate the bitmatrix
 	int bitrows = recovery_count * 8;
 	bitstride = (bitrows + 63) / 64;
-    u64 *bitmatrix = c256->bitMatrix;//new u64[bitstride * bitrows];
+    u64 *bitmatrix = c256->bitMatrix;//new u64[bitstride * bitrows]; // Max size is recovery_count=255 -> bitrows = 2040, bitstride = 32, so size = 65280
     assert(sizeof(Cauchy256::bitMatrix) >= bitstride * bitrows * sizeof(uint64_t));
 	u64 *bitrow = bitmatrix;
 

@@ -53,7 +53,7 @@ extern void cauchy_256_deinit();
 
 typedef struct _Cauchy256 {
     unsigned char matrix[256 * 256];
-    uint64_t bitMatrix[256 * 256];
+    uint64_t bitMatrix[65280]; // Max size is recovery_count=255 -> bitrows = 2040, bitstride = 32, so size = 65280
     unsigned char* buffer;
     size_t maxBlockBytes;
     size_t maxBufferSize;
