@@ -27,7 +27,7 @@ desktops too.
 
 ## Usage
 
-Documentation is provided in the header file [cauchy_256.h](https://github.com/catid/longhair/raw/master/include/cauchy_256.h).
+Documentation is provided in the header file [cauchy_256.h](https://github.com/catid/longhair/raw/master/cauchy_256.h).
 
 When your application starts up it should call `cauchy_init()` to verify that the library is linked properly:
 
@@ -184,41 +184,39 @@ is more applicable:
 
 ## Benchmarks
 
-##### liblonghair.a on iMac (2.7 GHz Core i5-2500S Sandy Bridge, June 2011):
-
-Turbo boost is enabled.
+This is running on my pretty fast desktop.  Try it out on your target device and see how it does!
 
 ~~~
 Using 1296 bytes per block (ie. packet/chunk size); must be a multiple of 8 bytes
 
 Encoded k=29 data blocks with m=1 recovery blocks in 1 usec : 37584 MB/s
-+ Decoded 1 erasures in 1 usec : 37584 MB/s
-Encoded k=29 data blocks with m=2 recovery blocks in 12 usec : 3132 MB/s
-+ Decoded 2 erasures in 13 usec : 2891.08 MB/s
-Encoded k=29 data blocks with m=3 recovery blocks in 25 usec : 1503.36 MB/s
-+ Decoded 3 erasures in 30 usec : 1252.8 MB/s
-Encoded k=29 data blocks with m=4 recovery blocks in 42 usec : 894.857 MB/s
-+ Decoded 4 erasures in 57 usec : 659.368 MB/s
-Encoded k=29 data blocks with m=5 recovery blocks in 32 usec : 1174.5 MB/s
-+ Decoded 5 erasures in 43 usec : 874.047 MB/s
-Encoded k=29 data blocks with m=6 recovery blocks in 36 usec : 1044 MB/s
-+ Decoded 6 erasures in 52 usec : 722.769 MB/s
-Encoded k=29 data blocks with m=7 recovery blocks in 41 usec : 916.683 MB/s
-+ Decoded 7 erasures in 58 usec : 648 MB/s
-Encoded k=29 data blocks with m=8 recovery blocks in 46 usec : 817.043 MB/s
-+ Decoded 8 erasures in 66 usec : 569.455 MB/s
-Encoded k=29 data blocks with m=9 recovery blocks in 52 usec : 722.769 MB/s
-+ Decoded 9 erasures in 84 usec : 447.429 MB/s
-Encoded k=29 data blocks with m=10 recovery blocks in 57 usec : 659.368 MB/s
-+ Decoded 10 erasures in 90 usec : 417.6 MB/s
-Encoded k=29 data blocks with m=11 recovery blocks in 62 usec : 606.194 MB/s
-+ Decoded 11 erasures in 124 usec : 303.097 MB/s
-Encoded k=29 data blocks with m=12 recovery blocks in 66 usec : 569.455 MB/s
-+ Decoded 12 erasures in 111 usec : 338.595 MB/s
-Encoded k=29 data blocks with m=13 recovery blocks in 71 usec : 529.352 MB/s
-+ Decoded 13 erasures in 122 usec : 308.066 MB/s
-Encoded k=29 data blocks with m=14 recovery blocks in 77 usec : 488.104 MB/s
-+ Decoded 14 erasures in 133 usec : 282.586 MB/s
++ Decoded 1 erasures in 2 usec : 18792 MB/s
+Encoded k=29 data blocks with m=2 recovery blocks in 9 usec : 4176 MB/s
++ Decoded 2 erasures in 12 usec : 3132 MB/s
+Encoded k=29 data blocks with m=3 recovery blocks in 19 usec : 1978 MB/s
++ Decoded 3 erasures in 22 usec : 1708 MB/s
+Encoded k=29 data blocks with m=4 recovery blocks in 31 usec : 1212 MB/s
++ Decoded 4 erasures in 35 usec : 1073 MB/s
+Encoded k=29 data blocks with m=5 recovery blocks in 22 usec : 1708 MB/s
++ Decoded 5 erasures in 30 usec : 1252 MB/s
+Encoded k=29 data blocks with m=6 recovery blocks in 24 usec : 1566 MB/s
++ Decoded 6 erasures in 34 usec : 1105 MB/s
+Encoded k=29 data blocks with m=7 recovery blocks in 28 usec : 1342 MB/s
++ Decoded 7 erasures in 39 usec : 963 MB/s
+Encoded k=29 data blocks with m=8 recovery blocks in 30 usec : 1252 MB/s
++ Decoded 8 erasures in 43 usec : 874 MB/s
+Encoded k=29 data blocks with m=9 recovery blocks in 33 usec : 1138 MB/s
++ Decoded 9 erasures in 53 usec : 709 MB/s
+Encoded k=29 data blocks with m=10 recovery blocks in 36 usec : 1044 MB/s
++ Decoded 10 erasures in 57 usec : 659 MB/s
+Encoded k=29 data blocks with m=11 recovery blocks in 39 usec : 963 MB/s
++ Decoded 11 erasures in 63 usec : 596 MB/s
+Encoded k=29 data blocks with m=12 recovery blocks in 41 usec : 916 MB/s
++ Decoded 12 erasures in 71 usec : 529 MB/s
+Encoded k=29 data blocks with m=13 recovery blocks in 51 usec : 736 MB/s
++ Decoded 13 erasures in 82 usec : 458 MB/s
+Encoded k=29 data blocks with m=14 recovery blocks in 48 usec : 783 MB/s
++ Decoded 14 erasures in 87 usec : 432 MB/s
 ~~~
 
 Note that the codec is specialized for the `m = 1` case and runs very quickly.
@@ -305,6 +303,6 @@ factor into the performance of the code.
 
 #### Credits
 
-This software was written entirely by myself ( Christopher A. Taylor <mrcatid@gmail.com> ).  If you
-find it useful and would like to buy me a coffee, consider [tipping](https://www.gittip.com/catid/).
+Software by Christopher A. Taylor mrcatid@gmail.com
 
+Please reach out if you need support or would like to collaborate on a project.

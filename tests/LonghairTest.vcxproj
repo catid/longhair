@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -18,34 +18,46 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="LonghairLibrary.vcxproj">
+      <Project>{4fe9cedc-808c-468a-a870-1132a278dc32}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="cauchy_256_tests.cpp" />
+    <ClCompile Include="SiameseTools.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SiameseTools.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4FE9CEDC-808C-468A-A870-1132A278DC30}</ProjectGuid>
-    <RootNamespace>longhair_win32</RootNamespace>
+    <RootNamespace>LonghairTest</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -132,25 +144,6 @@
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\libcat\Clock.cpp" />
-    <ClCompile Include="..\libcat\MemSwap.cpp" />
-    <ClCompile Include="..\libcat\MemXOR.cpp" />
-    <ClCompile Include="..\src\cauchy_256.cpp" />
-    <ClCompile Include="..\tests\cauchy_256_tests.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\src\cauchy_tables_256.inc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\include\cauchy_256.h" />
-    <ClInclude Include="..\libcat\AbyssinianPRNG.hpp" />
-    <ClInclude Include="..\libcat\Clock.hpp" />
-    <ClInclude Include="..\libcat\Config.hpp" />
-    <ClInclude Include="..\libcat\MemSwap.hpp" />
-    <ClInclude Include="..\libcat\MemXOR.hpp" />
-    <ClInclude Include="..\libcat\Platform.hpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
