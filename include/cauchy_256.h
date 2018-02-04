@@ -29,6 +29,9 @@
 #ifndef CAT_CAUCHY_256_HPP
 #define CAT_CAUCHY_256_HPP
 
+#include <stdint.h>
+#include <cstddef>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,7 +49,18 @@ extern "C" {
  */
 extern int _cauchy_256_init(int expected_version);
 #define cauchy_256_init() _cauchy_256_init(CAUCHY_256_VERSION)
+extern void cauchy_256_deinit();
 
+typedef struct _Cauchy256 {
+    unsigned char matrix[256 * 256];
+    uint64_t bitMatrix[65280]; // Max size is recovery_count=255 -> bitrows = 2040, bitstride = 32, so size = 65280
+    unsigned char* buffer;
+    size_t maxBlockBytes;
+    size_t maxBufferSize;
+} Cauchy256;
+
+extern Cauchy256 *cauchy_256_create(size_t maxBlockBytes);
+extern void cauchy_256_destroy(Cauchy256 *c256);
 
 // Descriptor for received data block
 typedef struct _Block {
@@ -75,7 +89,7 @@ typedef struct _Block {
  *
  * Returns 0 on success, and any other code indicates failure.
  */
-extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], void *recovery_blocks, int block_bytes);
+extern int cauchy_256_encode(Cauchy256* c256, int k, int m, const unsigned char *data_ptrs[], void *recovery_blocks, int block_bytes);
 
 /*
  * Cauchy decode
@@ -100,7 +114,7 @@ extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], voi
  *
  * Returns 0 on success, and any other code indicates failure.
  */
-extern int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes);
+extern int cauchy_256_decode(Cauchy256* c256, int k, int m, Block *blocks, int block_bytes);
 
 
 #ifdef __cplusplus

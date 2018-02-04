@@ -202,6 +202,7 @@
  * it is done on triangular matrices during Gaussian elimination.
  */
 
+#include <cassert>
 //#define CAT_CAUCHY_LOG
 
 // Debugging
@@ -388,13 +389,41 @@ static void GFC256Init()
 
 extern "C" int _cauchy_256_init(int expected_version)
 {
-	if (expected_version != CAUCHY_256_VERSION) {
-		return -1;
-	}
+    if (expected_version != CAUCHY_256_VERSION) {
+        return -1;
+    }
 
-	GFC256Init();
+    GFC256Init();
 
-	return 0;
+    return 0;
+}
+
+extern "C" void cauchy_256_deinit()
+{
+    delete[] GFC256_MUL_TABLE;
+    GFC256_MUL_TABLE = 0;
+    GFC256_DIV_TABLE = 0;
+}
+
+extern "C" Cauchy256 *cauchy_256_create(size_t maxBlockBytes)
+{
+    Cauchy256* c256 = new Cauchy256;
+    const size_t bufferSize = (maxBlockBytes / 8) * PRECOMP_TABLE_SIZE * 2;
+    c256->buffer = new unsigned char[bufferSize];
+    c256->maxBlockBytes = maxBlockBytes;
+    c256->maxBufferSize = bufferSize;
+    return c256;
+}
+
+extern "C" void cauchy_256_destroy(Cauchy256 *c256)
+{
+    if (!c256) {
+        return;
+    }
+
+    delete[] c256->buffer;
+    c256->buffer = 0;
+    delete c256;
 }
 
 // return x * y in GF(256)
@@ -419,11 +448,8 @@ static CAT_INLINE u8 GFC256Divide(u8 x, u8 y)
 #define CAT_CAUCHY_MATRIX_STACK_SIZE 1024
 
 // Precondition: m > 1
-static const u8 *cauchy_matrix(int k, int m, int &stride,
-		u8 stack[CAT_CAUCHY_MATRIX_STACK_SIZE], bool &dynamic_memory)
+static const u8 *cauchy_matrix(Cauchy256 *c256, int k, int m, int &stride)
 {
-	dynamic_memory = false;
-
 	switch (m) {
 	case 2:
 		stride = 254;
@@ -442,12 +468,9 @@ static const u8 *cauchy_matrix(int k, int m, int &stride,
 		return CAUCHY_MATRIX_6;
 	}
 
-	u8 *matrix = stack;
+    u8 *matrix = c256->matrix;
 	int matrix_size = k * (m - 1);
-	if (matrix_size > CAT_CAUCHY_MATRIX_STACK_SIZE) {
-		matrix = new u8[matrix_size];
-		dynamic_memory = true;
-	}
+    assert(sizeof(Cauchy256::matrix) >= (size_t)matrix_size);
 
 	// Get X[] and Y[] vectors
 	const u8 *Y = CAUCHY_MATRIX_Y; // Y[0] = 0
@@ -709,14 +732,15 @@ static void eliminate_original(Block *original[256], int original_count,
 	}
 }
 
-static u64 *generate_bitmatrix(int k, Block *recovery[256], int recovery_count,
-						const u8 *matrix, int stride, const u8 erasures[256],
-						int &bitstride)
+static u64 *generate_bitmatrix(Cauchy256* c256, int k, Block *recovery[256],
+                        int recovery_count, const u8 *matrix, int stride,
+                        const u8 erasures[256],	int &bitstride)
 {
 	// Allocate the bitmatrix
 	int bitrows = recovery_count * 8;
 	bitstride = (bitrows + 63) / 64;
-	u64 *bitmatrix = new u64[bitstride * bitrows];
+    u64 *bitmatrix = c256->bitMatrix;//new u64[bitstride * bitrows]; // Max size is recovery_count=255 -> bitrows = 2040, bitstride = 32, so size = 65280
+    assert(sizeof(Cauchy256::bitMatrix) >= bitstride * bitrows * sizeof(uint64_t));
 	u64 *bitrow = bitmatrix;
 
 	// For each recovery block,
@@ -1251,8 +1275,14 @@ static void back_substitution(int rows, Block *recovery[256], u64 *bitmatrix,
 	}
 }
 
-extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
+extern "C" int cauchy_256_decode(Cauchy256 *c256, int k, int m, Block *blocks, int block_bytes)
 {
+    assert((size_t)block_bytes <= c256->maxBlockBytes);
+    if((size_t)block_bytes > c256->maxBlockBytes)
+    {
+        return -1;
+    }
+
 	// If there is only one input block,
 	if (k <= 1) {
 		// The block is already the same as original data
@@ -1309,7 +1339,8 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 	// If precomputation window is being used,
 	if (recovery_count > PRECOMP_TABLE_THRESH) {
-		precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+        precomp = c256->buffer;// new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+        assert(c256->maxBufferSize >= (size_t)(subbytes * PRECOMP_TABLE_SIZE * 2));
 
 		precomp_tables[0] = table_stack;
 		precomp_tables[1] = table_stack + 16;
@@ -1333,10 +1364,9 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	}
 
 	// Generate Cauchy matrix
-	int stride;
-	u8 stack_space[CAT_CAUCHY_MATRIX_STACK_SIZE];
-	bool dynamic_matrix;
-	const u8 *matrix = cauchy_matrix(k, m, stride, stack_space, dynamic_matrix);
+    int stride;
+    const u8 *matrix = cauchy_matrix(c256, k, m, stride);
+    assert(stride < 256);
 
 	// From the Cauchy matrix, each byte value can be expanded into
 	// an 8x8 submatrix containing a minimal number of ones.
@@ -1366,7 +1396,7 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 
 	// Generate square bitmatrix for erased columns from recovery rows
 	int bitstride;
-	u64 *bitmatrix = generate_bitmatrix(k, recovery, recovery_count, matrix,
+    u64 *bitmatrix = generate_bitmatrix(c256, k, recovery, recovery_count, matrix,
 										stride, erasures, bitstride);
 
 	DLOG(print_matrix(bitmatrix, bitstride, recovery_count * 8);)
@@ -1401,13 +1431,13 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 	}
 
 	// Free temporary workspace
-	delete []bitmatrix;
-	if (dynamic_matrix) {
-		delete []matrix;
-	}
-	if (precomp) {
-		delete []precomp;
-	}
+    //	delete []bitmatrix;
+    //	if (dynamic_matrix) {
+    //		delete []matrix;
+    //	}
+//	if (precomp) {
+//		delete []precomp;
+//	}
 
 	return 0;
 }
@@ -1416,12 +1446,12 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 //// Encoder
 
 // Windowed version of encoder
-static void win_encode(int k, int m, const u8 *matrix, int stride,
+static void win_encode(Cauchy256 *c256, int k, int m, const u8 *matrix, int stride,
 					   const u8 **data, u8 *out, int subbytes)
 {
-	static const int PRECOMP_TABLE_SIZE = 11;
+    u8 *precomp = c256->buffer;//new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
+    assert(c256->maxBufferSize >= (size_t)(subbytes * PRECOMP_TABLE_SIZE * 2));
 
-	u8 *precomp = new u8[subbytes * PRECOMP_TABLE_SIZE * 2];
 	u8 *table_stack[16 * 2] = {0};
 	u8 **tables[2] = {
 		table_stack, table_stack + 16
@@ -1496,12 +1526,18 @@ static void win_encode(int k, int m, const u8 *matrix, int stride,
 		}
 	}
 
-	delete []precomp;
+//	delete []precomp;
 }
 
-extern "C" int cauchy_256_encode(int k, int m, const u8 *data[],
+extern "C" int cauchy_256_encode(Cauchy256* c256, int k, int m, const u8 *data[],
 								 void *vrecovery_blocks, int block_bytes)
 {
+    assert((size_t)block_bytes <= c256->maxBlockBytes);
+    if((size_t)block_bytes > c256->maxBlockBytes)
+    {
+        return -1;
+    }
+
 	u8 *recovery_blocks = reinterpret_cast<u8 *>( vrecovery_blocks );
 
 	// If only one input block,
@@ -1536,10 +1572,9 @@ extern "C" int cauchy_256_encode(int k, int m, const u8 *data[],
 	GFC256Init();
 
 	// Generate Cauchy matrix
-	int stride;
-	u8 stack_space[CAT_CAUCHY_MATRIX_STACK_SIZE];
-	bool dynamic_matrix;
-	const u8 *matrix = cauchy_matrix(k, m, stride, stack_space, dynamic_matrix);
+    int stride;
+    const u8 *matrix = cauchy_matrix(c256, k, m, stride);
+    assert(stride < 256);
 
 	// The first 8 rows of the bitmatrix are always the same, 8x8 identity
 	// matrices all the way across.  So we don't even bother generating those
@@ -1556,7 +1591,7 @@ extern "C" int cauchy_256_encode(int k, int m, const u8 *data[],
 	// If the number of symbols to generate gets larger,
 	if (m > 4) {
 		// Start using a windowed approach to encoding
-		win_encode(k, m, matrix, stride, data, out, subbytes);
+        win_encode(c256, k, m, matrix, stride, data, out, subbytes);
 	} else {
 		const u8 *row = matrix;
 
@@ -1591,10 +1626,6 @@ extern "C" int cauchy_256_encode(int k, int m, const u8 *data[],
 				}
 			}
 		}
-	}
-
-	if (dynamic_matrix) {
-		delete []matrix;
 	}
 
 	return 0;
