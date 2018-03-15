@@ -19,12 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cauchy_256_tests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="LonghairLibrary.vcxproj">
       <Project>{4fe9cedc-808c-468a-a870-1132a278dc32}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="cauchy_256_tests.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4FE9CEDC-808C-468A-A870-1132A278DC30}</ProjectGuid>
