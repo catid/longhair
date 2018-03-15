@@ -25,10 +25,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cauchy_256_tests.cpp" />
-    <ClCompile Include="SiameseTools.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="SiameseTools.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4FE9CEDC-808C-468A-A870-1132A278DC30}</ProjectGuid>

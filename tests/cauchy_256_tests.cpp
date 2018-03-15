@@ -4,7 +4,7 @@
 using namespace std;
 
 #include "../cauchy_256.h"
-#include "SiameseTools.h"
+#include "../SiameseTools.h"
 #include <cstdint>
 
 static void print(const void *data, int bytes) {

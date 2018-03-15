@@ -202,7 +202,7 @@
  * it is done on triangular matrices during Gaussian elimination.
  */
 
-#include <cstdint>
+#include "SiameseTools.h"
 #include "gf256.h"
 
  //#define CAT_CAUCHY_LOG
@@ -400,14 +400,14 @@ extern "C" int _cauchy_256_init(int expected_version)
 
 // return x * y in GF(256)
 // For repeated multiplication by a constant, it is faster to put the constant in y.
-static GF256_FORCE_INLINE uint8_t GFC256Multiply(uint8_t x, uint8_t y)
+static SIAMESE_FORCE_INLINE uint8_t GFC256Multiply(uint8_t x, uint8_t y)
 {
     return GFC256_MUL_TABLE[((uint32_t)y << 8) + x];
 }
 
 // return x / y in GF(256)
 // Memory-access optimized for constant divisors in y.
-static GF256_FORCE_INLINE uint8_t GFC256Divide(uint8_t x, uint8_t y)
+static SIAMESE_FORCE_INLINE uint8_t GFC256Divide(uint8_t x, uint8_t y)
 {
     return GFC256_DIV_TABLE[((uint32_t)y << 8) + x];
 }
@@ -548,7 +548,7 @@ static void sort_blocks(int k, Block *blocks,
     // Identify erasures
     for (int ii = 0, erasure_count = 0; ii < 256 && erasure_count < recovery_count; ++ii) {
         if (!erasures[ii]) {
-            erasures[erasure_count++] = ii;
+            erasures[erasure_count++] = (uint8_t)ii;
         }
     }
 }
@@ -708,7 +708,7 @@ static uint64_t *generate_bitmatrix(int k, Block *recovery[256], int recovery_co
             // Write 8x8 identity submatrix pattern across each bit row
             uint64_t pattern = 0x0101010101010101ULL;
 
-            for (int ii = 0; ii < 8; ++ii, pattern <<= 1, bitrow += bitstride) {
+            for (int jj = 0; jj < 8; ++jj, pattern <<= 1, bitrow += bitstride) {
                 for (int x = 0; x < bitstride; ++x) {
                     bitrow[x] = pattern;
                 }
@@ -738,9 +738,9 @@ static uint64_t *generate_bitmatrix(int k, Block *recovery[256], int recovery_co
 
                 DLOG(cout << "+ Generating 8x8 submatrix from slice=" << (int)slice << endl;)
 
-                for (int ii = 1; ii < 8; ++ii) {
+                for (int jj = 1; jj < 8; ++jj) {
                     slice = GFC256Multiply(slice, 2);
-                    w[ii] = (uint64_t)slice;
+                    w[jj] = (uint64_t)slice;
                 }
 
                 // For each remaining 8 bit slice,
@@ -749,16 +749,16 @@ static uint64_t *generate_bitmatrix(int k, Block *recovery[256], int recovery_co
                     DLOG(cout << "+ Generating 8x8 submatrix from slice=" << (int)slice << endl;)
                     w[0] |= (uint64_t)slice << shift;
 
-                    for (int ii = 1; ii < 8; ++ii) {
+                    for (int jj = 1; jj < 8; ++jj) {
                         slice = GFC256Multiply(slice, 2);
-                        w[ii] |= (uint64_t)slice << shift;
+                        w[jj] |= (uint64_t)slice << shift;
                     }
                 }
 
                 // Write 64-bit column of bitmatrix
                 uint64_t *out = bitrow;
-                for (int ii = 0; ii < 8; ++ii, out += bitstride) {
-                    out[0] = w[ii];
+                for (int jj = 0; jj < 8; ++jj, out += bitstride) {
+                    out[0] = w[jj];
                 }
                 ++bitrow;
             }
@@ -1398,8 +1398,6 @@ extern "C" int cauchy_256_decode(int k, int m, Block *blocks, int block_bytes)
 static void win_encode(int k, int m, const uint8_t *matrix, int stride,
                        const uint8_t **data, uint8_t *out, int subbytes)
 {
-    static const int PRECOMP_TABLE_SIZE = 11;
-
     uint8_t *precomp = new uint8_t[subbytes * PRECOMP_TABLE_SIZE * 2];
     uint8_t *table_stack[16 * 2] = {0};
     uint8_t **tables[2] = {

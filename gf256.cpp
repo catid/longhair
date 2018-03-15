@@ -588,10 +588,20 @@ static void gf256_mul_mem_init()
 //------------------------------------------------------------------------------
 // Initialization
 
-static unsigned char LittleEndianTestData[4] = { 4, 3, 2, 1 };
+static unsigned char kLittleEndianTestData[4] = { 4, 3, 2, 1 };
+
+union UnionType
+{
+    uint32_t IntValue;
+    char CharArray[4];
+};
+
 static bool IsLittleEndian()
 {
-    return 0x01020304 == *reinterpret_cast<uint32_t*>(LittleEndianTestData);
+    UnionType type;
+    for (unsigned i = 0; i < 4; ++i)
+        type.CharArray[i] = kLittleEndianTestData[i];
+    return 0x01020304 == type.IntValue;
 }
 
 extern "C" int gf256_init_(int version)

@@ -207,7 +207,7 @@ extern int gf256_init_(int version);
 /// return x + y
 static GF256_FORCE_INLINE uint8_t gf256_add(uint8_t x, uint8_t y)
 {
-    return x ^ y;
+    return (uint8_t)(x ^ y);
 }
 
 /// return x * y
@@ -265,7 +265,7 @@ static GF256_FORCE_INLINE void gf256_div_mem(void * GF256_RESTRICT vz,
                                              const void * GF256_RESTRICT vx, uint8_t y, int bytes)
 {
     // Multiply by inverse
-    gf256_mul_mem(vz, vx, y == 1 ? 1 : GF256Ctx.GF256_INV_TABLE[y], bytes);
+    gf256_mul_mem(vz, vx, y == 1 ? (uint8_t)1 : GF256Ctx.GF256_INV_TABLE[y], bytes);
 }
 
 

@@ -21,10 +21,12 @@
   <ItemGroup>
     <ClCompile Include="..\cauchy_256.cpp" />
     <ClCompile Include="..\gf256.cpp" />
+    <ClCompile Include="..\SiameseTools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\cauchy_256.h" />
     <ClInclude Include="..\gf256.h" />
+    <ClInclude Include="..\SiameseTools.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\cauchy_tables_256.inc" />
