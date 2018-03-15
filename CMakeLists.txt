@@ -10,12 +10,12 @@ set(LIB_SOURCE_FILES
         cauchy_256.h
         gf256.cpp
         gf256.h
+        SiameseTools.cpp
+        SiameseTools.h
         )
 
 set(UNIT_TEST_SOURCE_FILES
         tests/cauchy_256_tests.cpp
-        tests/SiameseTools.cpp
-        tests/SiameseTools.h
         )
 
 if(NOT CMAKE_BUILD_TYPE)
