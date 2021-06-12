@@ -7,6 +7,97 @@ using namespace std;
 #include "../SiameseTools.h"
 #include <cstdint>
 
+
+//------------------------------------------------------------------------------
+// Utility: Deck Shuffling function
+
+void ShuffleDeck16(
+    siamese::PCGRandom& prng,
+    uint16_t* deck,
+    const uint32_t count)
+{
+    deck[0] = 0;
+
+    // If we can unroll 4 times:
+    if (count <= 256)
+    {
+        for (uint32_t ii = 1;;)
+        {
+            uint32_t jj, rv = prng.Next();
+
+            // 8-bit unroll
+            switch (count - ii)
+            {
+            default:
+                jj = (uint8_t)rv % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                jj = (uint8_t)(rv >> 8) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                jj = (uint8_t)(rv >> 16) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                jj = (uint8_t)(rv >> 24) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                break;
+
+            case 3:
+                jj = (uint8_t)rv % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+            case 2:
+                jj = (uint8_t)(rv >> 8) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+            case 1:
+                jj = (uint8_t)(rv >> 16) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+            case 0:
+                return;
+            }
+        }
+    }
+    else
+    {
+        // For each deck entry:
+        for (uint32_t ii = 1;;)
+        {
+            uint32_t jj, rv = prng.Next();
+
+            // 16-bit unroll
+            switch (count - ii)
+            {
+            default:
+                jj = (uint16_t)rv % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                jj = (uint16_t)(rv >> 16) % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+                ++ii;
+                break;
+
+            case 1:
+                jj = (uint16_t)rv % ii;
+                deck[ii] = deck[jj];
+                deck[jj] = (uint16_t)ii;
+            case 0:
+                return;
+            }
+        }
+    }
+}
+
 static void print(const void *data, int bytes) {
 	const uint8_t *in = reinterpret_cast<const uint8_t *>( data );
 
@@ -18,8 +109,8 @@ static void print(const void *data, int bytes) {
 }
 
 
-#define CAT_WORST_CASE_BENCHMARK
-#define CAT_REASONABLE_RECOVERY_COUNT
+//#define CAT_WORST_CASE_BENCHMARK
+//#define CAT_REASONABLE_RECOVERY_COUNT
 
 // Test to make sure that Longhair works well with input ordered like this for
 // k = 4 and m = 2
@@ -143,7 +234,13 @@ int main() {
             std::vector<uint8_t> recovery_blocks(block_bytes * recovery_block_count);
             std::vector<Block> blocks(block_count);
 
-			const uint8_t *data_ptrs[256];
+#if 0
+            if (recovery_block_count != 1) {
+                continue;
+            }
+#endif
+
+            const uint8_t *data_ptrs[256];
 			for (int ii = 0; ii < block_count; ++ii) {
 				data_ptrs[ii] = &data[ii * block_bytes];
 			}
@@ -194,10 +291,14 @@ int main() {
                         << (block_bytes * block_count / encode_time) << " MB/s" << endl;
                 }
 
+                // Select the packets to drop randomly
+                uint16_t deck[256];
+                ShuffleDeck16(prng, deck, block_count);
+
 				for (unsigned ii = 0; ii < erasures_count; ++ii) {
-                    unsigned erasure_index = recovery_block_count - ii - 1;
-					blocks[ii].data = &recovery_blocks[erasure_index * block_bytes];
-					blocks[ii].row = block_count + erasure_index;
+                    unsigned erasure_index = deck[ii];
+					blocks[ii].data = &recovery_blocks[ii * block_bytes];
+					blocks[ii].row = block_count + ii;
 				}
 
 				for (unsigned ii = erasures_count; ii < block_count; ++ii) {
@@ -223,16 +324,16 @@ int main() {
                 const uint64_t decode_time = t3 - t2;
 
                 if (decode_time == 0) {
-                    cout << "+ Decoded " << erasures_count << " erasures in " << decode_time << " usec" << endl;
+                    cout << "+ Decoded " << erasures_count << " erasures e.g. " << deck[0] << " so fast we cannot measure it" << endl;
                 }
                 else {
-                    cout << "+ Decoded " << erasures_count << " erasures in " << decode_time << " usec : "
+                    cout << "+ Decoded " << erasures_count << " erasures e.g. " << deck[0] << " in " << decode_time << " usec : "
                         << (block_bytes * block_count / decode_time) << " MB/s" << endl;
                 }
 
                 int result = 0;
 				for (int ii = 0; ii < erasures_count; ++ii) {
-					const uint8_t *orig = &data[ii * block_bytes];
+                    const uint8_t *orig = &data[ii * block_bytes];
                     result |= memcmp(blocks[ii].data, orig, block_bytes);
 				}
                 if (result != 0)
