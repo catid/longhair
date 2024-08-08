@@ -486,11 +486,27 @@ static const uint8_t *cauchy_matrix(int k, int m, int &stride,
 // Specialized fast decoder for m = 1
 static void cauchy_decode_m1(int k, Block *blocks, int block_bytes)
 {
+    // Find the missing row by tabulating presence and then finding which is missing
+    bool found_rows[256];
+    for (int ii = 0; ii < k; ++ii) {
+        found_rows[ii] = false;
+    }
+
     // Find erased row
     Block *erased = blocks;
-    for (int ii = 0; ii < k; ++ii, ++erased) {
-        if (erased->row >= k) {
+    Block *block = blocks;
+    for (int ii = 0; ii < k; ++ii, ++block) {
+        if (block->row >= k) {
+            erased = block;
             DLOG(cout << "Found erased row " << ii << " on block row " << (int)erased->row << endl;)
+        } else {
+            found_rows[block->row] = true;
+        }
+    }
+
+    for (int ii = 0; ii < k; ++ii) {
+        if (!found_rows[ii]) {
+            erased->row = ii;
             break;
         }
     }
