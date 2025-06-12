@@ -1,6 +1,8 @@
 # Longhair
 ## Fast Cauchy Reed-Solomon Erasure Codes in C
 
+Reed-Solomon codes offer strong guarantees for data recovery in the face of errors or erasures, making them widely used in applications like data storage (RAID systems) and communication. 
+
 Longhair is a simple, portable library for erasure codes.  From given data it generates
 redundant data that can be used to recover the originals.  It is extremely fast, though
 not as fast as the [CM256 library](https://github.com/catid/cm256).
@@ -14,8 +16,10 @@ The erasure code is parameterized by three values (`k`, `m`, `bytes`).  These ar
 + The number of blocks of redundant data (`m`), which must be no more than `256 - k`.
 + And the number of bytes per block (`bytes`), which must be a multiple of 8 bytes.
 
-These erasure codes are not patent-encumbered and the software is provided royalty-free.
+### Error Correction
+The decoding can recover the original data as long as it is provided with any `k` different blocks from the set of original + redundant data blocks. In other words if we provide a recovery block for any lost block from the original data, the decoding algorithm will be able to recover the original data. 
 
+These erasure codes are not patent-encumbered and the software is provided royalty-free.
 
 ##### Building: Quick Setup
 
@@ -78,7 +82,7 @@ To recover the original data, use the `cauchy_256_decode` function:
 
 ~~~
 	// Use the same settings as the encoder
-	int k = 33;
+	int k = 32;
 	int m = 12;
 	int bytes = 1000;
 
@@ -100,6 +104,7 @@ To recover the original data, use the `cauchy_256_decode` function:
 
 	// Now the block_info elements that used to have redundant data are
 	// corrected in-place and contain the original data.
+	// the block_info indices are updated as well
 ~~~
 
 The example above is just one way to use the `cauchy_256_decode` function.
@@ -110,7 +115,7 @@ is more applicable:
 
 ~~~
 	// Use the same settings as the encoder
-	int k = 33;
+	int k = 32;
 	int m = 12;
 	int bytes = 1000;
 
@@ -172,6 +177,7 @@ is more applicable:
 
 		// For each recovered block,
 		block = block_info + k - recovery_count;
+		// block->row got updated as well, now it has value from the range <0..k)
 		for (int ii = 0; ii < recovery_count; ++ii, ++block) {
 			// Process the recovered data
 			processData(block->row, block->data, bytes);

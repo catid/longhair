@@ -45,7 +45,7 @@ extern "C" {
  * Returns 0 if the API level does not match.
  */
 extern int _cauchy_256_init(int expected_version);
-#define cauchy_256_init() _cauchy_256_init(CAUCHY_256_VERSION)
+extern void cauchy_256_init() { _cauchy_256_init(CAUCHY_256_VERSION); }
 
 
 // Descriptor for received data block
@@ -85,14 +85,18 @@ extern int cauchy_256_encode(int k, int m, const unsigned char *data_ptrs[], voi
  *
  * You should provide the same k, m, block_bytes values used by the encoder.
  *
- * The blocks array contains pointers to data buffers each with block_bytes.
+ * The blocks array contains pointers to data buffers each of block_bytes size.
  * This array allows you to arrange the blocks in memory in any way that is
- * convenient.
+ * convenient. The size of the blocks array should be equal to k.
  *
- * The "row" should be set to the block index of the original data.
+ * The "row" should be set to the 0-based block index of the original data.
  * For example the second packet should be row = 1.  The "row" should be set to
- * k + i for the i'th recovery block.  For example the first recovery block row
+ * k + i for the i'th recovery block (also 0-based).  For example the first recovery block row
  * is k, and the second recovery block row is k + 1.
+ *
+ * After the successfull decoding the array of blocks is updated. All recovery blocks 
+ * will be in-place replaced with original block data and the row index will be also
+ * updated.
  *
  * I recommend filling in recovery blocks at the end of the array, and filling
  * in original data from the start.  This way when the function completes, all
